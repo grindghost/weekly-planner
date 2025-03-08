@@ -100,7 +100,7 @@ const formTitle = computed(() => {
 </script>
 
 <template>
-  <div class="flex h-screen">
+  <div class="flex w-full min-h-screen bg-gray-100">
     <ContactList
       :contacts="contacts"
       :selectedContact="selectedContact"
@@ -109,13 +109,13 @@ const formTitle = computed(() => {
     <div v-if="showForm" class="w-2/3 p-4">
       <div class="flex justify-between items-center">
         <div class="flex justify-center items-center gap-1.5 pl-4 mb-[-1rem]">
-          <OhVueIcon name="io-person-circle-sharp" fill="#99a1af" scale="1.5" />
-          <h2 class="text-xl font-bold text-gray-400">{{ formTitle }}</h2>
+          <!-- <OhVueIcon name="io-person-circle-sharp" fill="#99a1af" scale="1.5" />
+          <h2 class="text-xl font-bold text-gray-400">{{ formTitle }}</h2> -->
         </div>
 
         <button
           @click="handleCreateNewContact"
-          class="bg-primary text-white font-bold py-2 px-4 rounded"
+          class="bg-primary text-white font-bold py-2 px-4 rounded hidden"
         >
           New client
         </button>
@@ -131,7 +131,7 @@ const formTitle = computed(() => {
     <div v-else class="w-2/3 p-4 bg-gray-100 flex justify-center items-center">
       <button
         @click="handleCreateNewContact"
-        class="bg-primary hover:bg-blue-600 text-white font-bold py-2 px-4 rounded"
+        class="bg-primary hover:bg-primary text-white font-bold py-2 px-4 rounded"
       >
         New Client
       </button>

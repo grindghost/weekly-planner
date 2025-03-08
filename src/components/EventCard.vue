@@ -1,13 +1,13 @@
 <script setup lang="ts">
-import { defineProps, defineEmits, computed } from 'vue';
+import { defineProps, defineEmits, computed, ref, watch } from 'vue';
 import { useContacts } from '../composables/useContacts';
 import { Contact } from '../types/Contact';
 import { InjectionType } from './ContactForm.vue';
 import { OhVueIcon, addIcons } from 'oh-vue-icons';
-import { FaPumpMedical, RiSyringeFill } from 'oh-vue-icons/icons';
+import { FaPumpMedical, RiSyringeFill, MdCheckcircle } from 'oh-vue-icons/icons';
 
 // Add icons to the list of available icon in the app
-addIcons(FaPumpMedical, RiSyringeFill);
+addIcons(FaPumpMedical, RiSyringeFill, MdCheckcircle);
 
 interface Event {
   id: string;
@@ -17,13 +17,14 @@ interface Event {
   confirmed: boolean;
   title?: string;
   description?: string;
+  isCompleted?: boolean; // New field to track completion
 }
 
 const props = defineProps<{
   event: Event;
 }>();
 
-const emits = defineEmits(['edit', 'delete']);
+const emits = defineEmits(['edit', 'delete', 'update']);
 
 const formatTime = (date: Date) => {
   return date.toLocaleTimeString([], {
@@ -69,18 +70,37 @@ const truncatedDescription = computed<string | null>(() => {
   return null;
 });
 
+// New reactive reference to track the local completion status
+const isCompletedLocal = ref(props.event.isCompleted || false);
+
+// Watch for changes in the prop
+watch(() => props.event.isCompleted, (newValue) => {
+    isCompletedLocal.value = newValue ?? false;
+});
+
+// Function to toggle the completed state
+const toggleCompleted = () => {
+  isCompletedLocal.value = !isCompletedLocal.value;
+  emits('update', { ...props.event, isCompleted: isCompletedLocal.value });
+};
+
+// Computed property to apply strikethrough style conditionally
+const textDecorationStyle = computed(() => {
+  return isCompletedLocal.value ? 'line-through' : 'none';
+});
+
 </script>
 
 <template>
   <div
     class="border border-gray-300 rounded-md p-3 bg-white relative"
-    :style="contactColor ? { borderLeft: `6px solid ${contactColor}` } : {}"
+    :style="[contactColor ? { borderLeft: `6px solid ${contactColor}` } : {}]"
   >
     <div class="flex flex-col items-start justify-start mb-1">
-      <h3 class="font-semibold text-left text-[1rem] leading-[110%] tracking-tight">
+      <h3 class="font-semibold text-left text-[1rem] leading-[110%] tracking-tight" :style="{ textDecoration: textDecorationStyle }">
         {{ displayName }}
       </h3>
-      <div v-if="!contact && truncatedDescription" class="leading-tight font-light tracking-tight text-[0.7rem]">
+      <div v-if="!contact && truncatedDescription" class="leading-tight font-light tracking-tight text-[0.7rem]" :style="{ textDecoration: textDecorationStyle }">
         {{ truncatedDescription }}
       </div>
     </div>
@@ -92,10 +112,10 @@ const truncatedDescription = computed<string | null>(() => {
     >
       <OhVueIcon :name="getInjectionType === 'intravenous' ? 'ri-syringe-fill' : 'ri-syringe-fill'" :scale="0.7" />
     </div>
-    <div class="text-[0.8rem] mb-1">
+    <div class="text-[0.8rem] mb-1" :style="{ textDecoration: textDecorationStyle }">
       {{ formatTime(props.event.start) }} - {{ formatTime(props.event.end) }}
     </div>
-    <div v-if="getAntibiotic" class="leading-tight font-light tracking-tight text-[0.7rem]">
+    <div v-if="getAntibiotic" class="leading-tight font-light tracking-tight text-[0.7rem]" :style="{ textDecoration: textDecorationStyle }">
       {{ getAntibiotic }}
     </div>
     <div class="flex flex-row gap-1 mt-3">
@@ -105,11 +125,16 @@ const truncatedDescription = computed<string | null>(() => {
       >
         Edit
       </button>
-      <button
+       <button
         class="bg-gray-200 text-gray-500 rounded px-2 py-1 cursor-pointer text-[0.7rem] font-bold"
         @click.stop="emits('delete', props.event.id)"
       >
         Delete
+      </button>
+      <!-- Completion Checkbox -->
+      <button @click.stop="toggleCompleted" class="ml-2 cursor-pointer">
+        <OhVueIcon v-if="isCompletedLocal" name="md-checkcircle" :size="20" class="text-green-500 hover:border-green-400 hover:border-2 hover:rounded-[50%]" />
+        <OhVueIcon v-else name="md-checkcircle" :size="20" class="text-gray-300 hover:border-gray-200 hover:border-2 hover:rounded-[50%]" />
       </button>
     </div>
   </div>

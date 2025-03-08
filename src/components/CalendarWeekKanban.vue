@@ -37,6 +37,11 @@ const closeModal = () => {
 const getConfirmedEventsByDate = (date: Date) => {
   return getEventsByDate(date).filter((event) => event.confirmed);
 };
+
+const getConfirmedClientEventsByDate = (date: Date) => {
+  return getEventsByDate(date).filter((event) => event.confirmed && event.contactId);
+};
+
 // Filter ghost events
 const getGhostEventsByDate = (date: Date) => {
   return getEventsByDate(date).filter((event) => !event.confirmed);
@@ -62,6 +67,10 @@ const handleSaveEvent = (eventData: any) => {
 const handleDeleteEvent = (eventId: string) => {
   deleteEvent(eventId);
 };
+
+const handleUpdateEvent = (updatedEvent: any) => {
+      updateEvent(updatedEvent.id, updatedEvent)
+    }
 
 // Format the week header in a more readable format
 const formatWeekHeader = (week: any[]) => {
@@ -96,10 +105,29 @@ const getWorkWeekDays = (week: any[]) => {
   // Return Monday (index 1) through Friday (index 5)
   return week.slice(1, 6);
 };
+
+//New computed property
+const getConfirmedEventsCountByWeek = computed(() => {
+  const counts: number[] = [];
+  monthWeeks.value.forEach((week) => {
+    let count = 0;
+    getWorkWeekDays(week).forEach(day => {
+      count += getConfirmedClientEventsByDate(day.date).length;
+    });
+    counts.push(count);
+  });
+  return counts;
+});
+
+//New computed property to check if the day is today.
+const isToday = (date: Date) => {
+    const today = new Date();
+    return date.toDateString() === today.toDateString();
+};
 </script>
 
 <template>
-  <div class="week-kanban w-full overflow-x-auto p-4">
+  <div class="week-kanban w-full flex flex-col min-h-screen p-4 bg-gray-100">
     <div class="flex items-center justify-between mb-4">
       <div class="text-xl font-bold">
         {{ currentDate.toLocaleString('default', { month: 'long', year: 'numeric' }) }}
@@ -124,7 +152,7 @@ const getWorkWeekDays = (week: any[]) => {
       <div
         v-for="(week, weekIndex) in monthWeeks"
         :key="weekIndex"
-        class="kanban-column w-full border border-gray-300 rounded-lg bg-gray-100 shadow-md flex flex-col"
+        class="kanban-column w-full border border-gray-300 rounded-lg bg-gray-50 shadow-md flex flex-col"
       >
         <div class="week-header text-center font-bold p-3 bg-primary text-white rounded-t-lg flex flex-col min-w-[180px]">
           Week #{{ weekIndex + 1 }}
@@ -137,9 +165,18 @@ const getWorkWeekDays = (week: any[]) => {
           <div
             v-for="day in getWorkWeekDays(week)"
             :key="day.date.toISOString()"
-            class="day-container mb-4 border-b border-gray-200 pb-4 last:border-b-0 last:pb-0"
+            :class="[
+              'day-container',
+              'mb-4',
+              'border-b',
+              'border-gray-200',
+              'pb-4',
+              'last:border-b-0',
+              'last:pb-0',
+              isToday(day.date) ? 'border-1 border-primary rounded-md p-2 bg-purple-50 last:border-b-1 last:pb-4' : '', // Add border for today
+            ]"
           >
-            <h3 class="day-header font-semibold text-gray-500 uppercase text-xs tracking-wider mb-1">
+            <h3 class="day-header text-gray-500 uppercase text-xs tracking-wider mb-1" :class="isToday(day.date) ? 'text-primary font-extrabold' : 'font-semibold'">
               {{ formatDayHeader(day.date) }}
             </h3>
 
@@ -158,11 +195,12 @@ const getWorkWeekDays = (week: any[]) => {
                 @edit="openModal(event)"
                 @click.stop="openModal(event)"
                 @delete="handleDeleteEvent"
+                @update="handleUpdateEvent"
                 class="event-in-list mb-2 cursor-pointer transition transform hover:-translate-y-1 hover:shadow-md"
               />
 
               <button
-                class="add-event-btn w-full bg-gray-100 border-2 border-dashed border-gray-300 rounded-md mt-2 cursor-pointer text-gray-600 hover:bg-gray-200 hover:text-gray-800"
+                class="add-event-btn w-full border-2 border-dashed border-gray-300 rounded-md mt-2 cursor-pointer text-gray-600 hover:bg-gray-200 hover:text-gray-800"
                 @click="openModal(null, day.date)"
               >
                 +
@@ -170,10 +208,17 @@ const getWorkWeekDays = (week: any[]) => {
             </div>
           </div>
         </div>
-
-        <div class="week-footer text-center font-bold p-3 bg-gray-200 rounded-b-lg mt-auto">
-          <!-- Total Duration:  -->
-          {{ calculateWeekTotalDuration(week[1].date, week[5].date) }}
+        <div class="sticky bottom-0 flex flex-col">
+          <div class="h-10 bg-gradient-to-b from-transparent to-white"></div>
+          <div class="week-footer text-center font-bold p-3 bg-gray-200 rounded-b-lg mt-auto">
+            <!-- Total Duration:  -->
+            <div>
+              {{ calculateWeekTotalDuration(week[1].date, week[5].date) }}
+            </div>
+            <div class="text-xs font-light">
+              ({{ getConfirmedEventsCountByWeek[weekIndex] }} clients confirmed)
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -186,6 +231,7 @@ const getWorkWeekDays = (week: any[]) => {
       @save="handleSaveEvent"
     />
   </div>
+
 </template>
 
 <style scoped>

@@ -23,10 +23,12 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
-* {
-  /* margin: 0;
-  padding: 0; */
-  /* box-sizing: border-box; */
+
+/*in your global style*/
+.app-container {
+  display: flex; /* Add flex */
+  flex-direction: column; /* Add flex direction */
+  min-height: 100vh;
 }
 
 
@@ -34,9 +36,6 @@
   /* max-width: 1280px; */
   margin: 0 auto;
   width: 100%;
-  height: 100dvh;
-  /* padding: 2rem;
-  text-align: center; */
 }
 
 body {
@@ -45,8 +44,6 @@ body {
   /* place-items: center; */
   /* min-width: 320px; */
   /* min-height: 100vh; */
-  height: 100dvh;
-
 }
 
 h1 {

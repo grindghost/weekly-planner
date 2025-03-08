@@ -140,7 +140,7 @@ const modalTitle = computed(() => {
 
 <template>
   <div v-if="isOpen" class="fixed top-0 left-0 w-full h-full bg-[rgba(0,0,0,0.7)] flex justify-center items-center z-50">
-    <div class="bg-white p-6 rounded-lg w-[450px] max-w-[90%] shadow-lg border-t-12 border-primary relative">
+    <div class="bg-white p-6 rounded-lg w-[450px] max-w-[90%] shadow-lg border-t-12 border-purple-600 relative">
         <!-- Confirmed Indicator -->
         <div v-if="isEventConfirmed" class="absolute top-2 right-2 w-4 h-4 bg-green-500 rounded-full"></div>
         <div v-else class="absolute top-2 right-2 w-4 h-4 bg-red-500 rounded-full"></div>
@@ -156,15 +156,15 @@ const modalTitle = computed(() => {
 
         <!-- Contact Selection -->
         <div class="mb-4">
-          <label for="contact" class="block mb-2 font-medium text-gray-700">Contact</label>
-          <select id="contact" v-model="selectedContact" class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent font-bold bg-purple-100 disabled:cur" :disabled="isConfirmingGhost">
+          <label for="contact" class="block mb-2 font-medium text-gray-700">Client</label>
+          <select id="contact" v-model="selectedContact" class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent font-bold bg-purple-100 disabled:cursor-not-allowed" :disabled="isConfirmingGhost">
             <option :value="null">No Contact</option>
             <option v-for="contact in contacts" :key="contact.id" :value="contact">
               {{ contact.name }}
             </option>
           </select>
           <div v-if="selectedContact" class="mt-1">
-            <a href="#" @click.prevent="handleEditContact()" class="text-primary text-sm hover:underline">Edit contact</a>
+            <a href="#" @click.prevent="handleEditContact()" class="text-primary text-sm hover:underline">Edit client</a>
           </div>
         </div>
 

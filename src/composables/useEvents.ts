@@ -11,6 +11,7 @@ interface Event {
   confirmed: boolean;
   title: string;
   description: string;
+  isCompleted: boolean;
 }
 
 // Helper function to calculate the next recurrence date
@@ -174,6 +175,7 @@ export function useEvents() {
       confirmed: event.confirmed || false,
       title: event.title || 'New Event',
       description: event.description || '',
+      isCompleted: event.isCompleted || false, //add this line
     };
     
     if (newEvent.confirmed) {
@@ -198,6 +200,8 @@ export function useEvents() {
         confirmed: updatedEvent.confirmed ?? oldEvent.confirmed, //add this line
         title: updatedEvent.title ?? oldEvent.title,
         description: updatedEvent.description ?? oldEvent.description,
+        isCompleted: updatedEvent.isCompleted ?? oldEvent.isCompleted,//add this line
+
       };
     }
     if (ghostIndex !== -1) {
@@ -212,6 +216,8 @@ export function useEvents() {
           confirmed: updatedEvent.confirmed ?? oldEvent.confirmed, //add this line
           title: updatedEvent.title ?? oldEvent.title,
           description: updatedEvent.description ?? oldEvent.description,
+          isCompleted: updatedEvent.isCompleted ?? oldEvent.isCompleted, //add this line
+
         };
     }
     // No need to call generateAllGhostEvents here, the watcher will handle it
@@ -313,7 +319,9 @@ export function useEvents() {
       confirmed: true, 
       id: uuidv4(),
       start: new Date(event.start.getTime()), 
-      end: new Date(event.end.getTime())
+      end: new Date(event.end.getTime()),
+      isCompleted: event.isCompleted || false, //add this line
+
     };
     
     // Add to confirmed events

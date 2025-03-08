@@ -81,6 +81,13 @@ else {
 closeModal();
 };
 
+// Function to check if a date is today
+const isToday = (date: Date): boolean => {
+  const today = new Date();
+  return date.getDate() === today.getDate() &&
+         date.getMonth() === today.getMonth() &&
+         date.getFullYear() === today.getFullYear();
+};
 
 </script>
 
@@ -118,15 +125,20 @@ closeModal();
           v-for="day in monthDays"
           :key="day.date.toISOString()"
           :class="[
-            'min-h-[100px] border border-gray-300 p-1.5 bg-gray-50 cursor-pointer transition-colors flex flex-col rounded-md',
-            { 'bg-white': day.isCurrentMonth },
-            { 'bg-blue-100': getEventsByDate(day.date).length > 0 },
+            'min-h-[100px] border border-gray-300 p-1.5 cursor-pointer transition-colors flex flex-col rounded-md',
+            { 'bg-white': day.isCurrentMonth & !isToday(day.date) },
+            { 'bg-gray-300 opacity-60' : !day.isCurrentMonth }, // Add this line
+            { 'bg-blue-100': getEventsByDate(day.date).length > 0 && day.isCurrentMonth },
             { 'hover:bg-gray-100': day.isCurrentMonth },
+            { 'border-primary border-1 bg-purple-50 hover:bg-purple-100': isToday(day.date) },
           ]"
           @click="openModal(null, day.date)"
         >
-          <div class="font-bold mb-1">
-            {{ day.date.getDate() }}
+          <div class="font-bold mb-1 relative">
+            <span v-if="isToday(day.date)" class="bg-primary text-white rounded-full w-6 h-6 flex items-center justify-center text-xs z-10">
+              {{ day.date.getDate() }}
+            </span>
+            <span v-else>{{ day.date.getDate() }}</span>
           </div>
 
           <div class="overflow-y-auto flex-grow">
