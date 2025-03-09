@@ -14,3 +14,9 @@ export interface Contact {
   antibioticRecurrenceValue?: number; // New field
   antibioticRecurrenceUnit?: 'day' | 'week'; // New field
 }
+
+export interface Antibiotic {
+  id: string;
+  name: string;
+  duration: number; // Duration in hours (decimal)
+}

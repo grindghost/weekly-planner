@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { ref, reactive, watch, onMounted } from 'vue';
+import { ref, reactive, watch, onMounted, computed } from 'vue';
 import { Contact } from '../types/Contact';
+import { useContacts } from '../composables/useContacts';
 import { OhVueIcon, addIcons } from 'oh-vue-icons';
-import { IoInformationCircleOutline, IoCloseCircleOutline, IoPersonCircleSharp } from 'oh-vue-icons/icons';
+import { IoInformationCircleOutline, IoCloseCircleOutline, IoPersonCircleSharp, BiPencil, MdDelete } from 'oh-vue-icons/icons';
 
-addIcons(IoInformationCircleOutline, IoCloseCircleOutline, IoPersonCircleSharp);
+addIcons(IoInformationCircleOutline, IoCloseCircleOutline, IoPersonCircleSharp, BiPencil, MdDelete);
 
 interface Props {
   modelValue?: Contact | null;
@@ -20,6 +21,8 @@ interface Emits {
 }
 
 const emit = defineEmits<Emits>();
+
+const { antibiotics, addAntibiotic, updateAntibiotic, deleteAntibiotic, getAntibioticById } = useContacts();
 
 const form = reactive<Omit<Contact, 'id'> & {
   birthDate: string;
@@ -45,11 +48,14 @@ const form = reactive<Omit<Contact, 'id'> & {
   antibioticRecurrenceUnit: 'week',
 });
 
-const antibiotics = ref<string[]>(['Penicillin', 'Amoxicillin', 'Ceftriaxone']);
+// const antibiotics = ref<string[]>(['Penicillin', 'Amoxicillin', 'Ceftriaxone']);
 
 const addAntibioticModalOpen = ref(false);
-const newAntibiotic = ref('');
-const antibioticRecurrence = ref('');
+const newAntibiotic = reactive({ // Reactive object for new antibiotic
+  name: '',
+  duration: 0, // Default duration
+});
+const editingAntibiotic = ref<string | null>(null);
 
 // State for the success overlay
 const showSuccessOverlay = ref(false);
@@ -60,19 +66,41 @@ const showDeleteConfirmationModal = ref(false);
 
 const openAddAntibioticModal = () => {
   addAntibioticModalOpen.value = true;
+  newAntibiotic.name = '';
+  newAntibiotic.duration = 0;
+  editingAntibiotic.value = null;
 };
 
 const closeAddAntibioticModal = () => {
   addAntibioticModalOpen.value = false;
-  newAntibiotic.value = '';
-  antibioticRecurrence.value = '';
+  newAntibiotic.name = '';
+  newAntibiotic.duration = 0;
+  editingAntibiotic.value = null;
 };
 
 const saveNewAntibiotic = () => {
-  if (newAntibiotic.value.trim().length > 0) {
-    antibiotics.value.push(newAntibiotic.value);
+  if (newAntibiotic.name.trim().length > 0 && newAntibiotic.duration > 0) {
+    if (editingAntibiotic.value) {
+      updateAntibiotic(editingAntibiotic.value, { ...newAntibiotic });
+    } else {
+      addAntibiotic({ ...newAntibiotic });
+    }
   }
   closeAddAntibioticModal();
+};
+
+const deleteExistingAntibiotic = (id: string) => {
+    deleteAntibiotic(id);
+};
+
+const editAntibiotic = (id: string) => {
+    const antibiotic = getAntibioticById(id);
+    if (antibiotic) {
+        editingAntibiotic.value = id;
+        newAntibiotic.name = antibiotic.name;
+        newAntibiotic.duration = antibiotic.duration;
+        addAntibioticModalOpen.value = true;
+    }
 };
 
 // Function to format date to yyyy-MM-dd
@@ -160,6 +188,10 @@ const handleDelete = () => {
   }
   closeDeleteConfirmation();
 };
+
+const modalTitle = computed(() => {
+    return editingAntibiotic.value ? 'Edit Antibiotic' : 'Add Antibiotic';
+});
 </script>
 
 <template>
@@ -326,8 +358,8 @@ const handleDelete = () => {
               class="flex-1 px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent w-full"
               required
             >
-              <option v-for="antibiotic in antibiotics" :key="antibiotic" :value="antibiotic">
-                {{ antibiotic }}
+              <option v-for="antibiotic in antibiotics" :key="antibiotic.id" :value="antibiotic.name">
+                {{ antibiotic.name }}
               </option>
             </select>
           </div>
@@ -351,94 +383,95 @@ const handleDelete = () => {
         </div>
       </div>
 
-      <div class="flex justify-end space-x-2 pt-4">
-        <button
-          type="button"
-          @click="handleCancel"
-          class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded cursor-pointer"
-        >
-          Cancel
-        </button>
-        <button type="submit" class="bg-primary hover:bg-primary text-white font-bold py-2 px-4 rounded cursor-pointer">
-          {{ props.isEditing ? 'Update' : 'Save' }}
-        </button>
-      </div>
-      <!-- Delete Button as a link under the other button -->
-      <div v-if="isEditing" class="mt-4 flex justify-end">
-        <button @click="openDeleteConfirmation" class="flex items-center text-red-500 hover:text-red-700 focus:outline-none text-xs cursor-pointer">
-          Delete Client
-        </button>
-      </div>
-    </form>
-    <!-- Add Antibiotic Modal -->
-    <div
-      v-if="addAntibioticModalOpen"
-      class="fixed inset-0 bg-[rgba(0,0,0,0.7)] overflow-y-auto h-full w-full z-50 flex items-center justify-center"
-    >
-      <div class="bg-white shadow-[0_3px_6px_rgba(0,0,0,0.16),0_3px_6px_rgba(0,0,0,0.23)] rounded-lg p-8 max-w-md border-t-12 border-purple-500">
-        <h2 class="text-lg font-bold mb-4">New Antibiotic</h2>
-        <div class="mb-4">
-          <label for="newAntibiotic" class="block text-sm font-medium text-gray-700">Name</label>
-          <input
-            v-model="newAntibiotic"
-            type="text"
-            id="newAntibiotic"
-            class="flex-1 px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-            required
-          />
-        </div>
-
-        <div class="flex flex-row gap-2">
-          <button
-            @click="closeAddAntibioticModal"
-            class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded cursor-pointer flex-grow"
-          >
+      <div class="flex justify-end flex-col items-end space-y-2 pt-4">
+        <div class="flex justify-end space-x-2">
+          <button type="button" @click="handleCancel" class="px-4 py-2 bg-gray-200 text-gray-700 border border-gray-300 rounded-md hover:bg-gray-300">
             Cancel
           </button>
-          <button
-            @click="saveNewAntibiotic"
-            class="bg-primary hover:bg-primary text-white font-bold py-2 px-4 rounded cursor-pointer"
-          >
+          <button type="submit" class="px-4 py-2 bg-primary text-white border border-transparent rounded-md hover:bg-primary-dark">
             Save
           </button>
         </div>
+        <button v-if="props.isEditing" type="button" @click="openDeleteConfirmation" class="text-red-500 hover:text-red-700 text-sm">
+          Delete this client
+        </button>
+      </div>
+
+    </form>
+
+    <!-- Antibiotic Add/Edit Modal -->
+    <div v-if="addAntibioticModalOpen" class="fixed top-0 left-0 w-full h-full bg-[rgba(0,0,0,0.7)] flex items-center justify-center z-50">
+      <div class="bg-white p-6 rounded-md shadow-md w-[800px] max-w-[90%] max-h-[80vh] overflow-y-auto">
+        <div class="flex justify-between items-center mb-4">
+            <h2 class="font-bold text-xl">{{ modalTitle }}</h2>
+            <button @click="closeAddAntibioticModal" class="text-gray-500 hover:text-gray-700">
+                <OhVueIcon name="io-close-circle-outline" scale="1.5" />
+            </button>
+        </div>
+        <div class="grid grid-cols-2 gap-4">
+          <!-- Form for adding/editing antibiotic -->
+          <div>
+            <label for="antibioticName" class="block text-sm font-medium text-gray-700">Antibiotic Name</label>
+            <input v-model="newAntibiotic.name" type="text" id="antibioticName" class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent" required />
+            <label for="antibioticDuration" class="block mt-2 text-sm font-medium text-gray-700">Duration (hours)</label>
+            <input v-model.number="newAntibiotic.duration" type="number" id="antibioticDuration" min="0" step="0.1" class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent" required />
+            <div class="flex justify-end mt-4">
+              <button @click="saveNewAntibiotic" class="px-4 py-2 bg-primary text-white border border-transparent rounded-md hover:bg-primary-dark">
+                Save
+              </button>
+            </div>
+          </div>
+          <!-- List of existing antibiotics -->
+          <div>
+            <h3 class="font-medium text-lg mb-2">Existing Antibiotics</h3>
+            <div v-if="antibiotics.length > 0" class="space-y-2">
+              <div v-for="antibiotic in antibiotics" :key="antibiotic.id" class="bg-gray-100 p-2 rounded-md flex items-center justify-between">
+                <div>
+                  <p class="font-medium">{{ antibiotic.name }}</p>
+                  <p class="text-sm text-gray-600">Duration: {{ antibiotic.duration }} hours</p>
+                </div>
+                <div class="space-x-2">
+                  <button @click="editAntibiotic(antibiotic.id)" class="text-blue-500 hover:text-blue-700">
+                    <OhVueIcon name="bi-pencil" />
+                  </button>
+                  <button @click="deleteExistingAntibiotic(antibiotic.id)" class="text-red-500 hover:text-red-700">
+                    <OhVueIcon name="md-delete" />
+                  </button>
+                </div>
+              </div>
+            </div>
+            <div v-else class="text-gray-500">No antibiotics added yet.</div>
+          </div>
+        </div>
       </div>
     </div>
+
     <!-- Delete Confirmation Modal -->
-    <div
-      v-if="showDeleteConfirmationModal"
-      class="fixed inset-0 bg-[rgba(0,0,0,0.7)] overflow-y-auto h-full w-full z-50 flex items-center justify-center"
-    >
-      <div class="bg-white rounded-lg p-8 max-w-md">
-        <h2 class="text-lg font-bold mb-4">Confirm Deletion</h2>
-        <p class="mb-4">Are you sure you want to delete this client?</p>
-        <div class="flex justify-end space-x-2">
-          <button
-            @click="closeDeleteConfirmation"
-            class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded"
-          >
+    <div v-if="showDeleteConfirmationModal" class="fixed top-0 left-0 w-full h-full bg-[rgba(0,0,0,0.7)] flex items-center justify-center z-50">
+      <div class="bg-white p-6 rounded-md shadow-md">
+        <h3 class="text-lg font-medium mb-4">Confirm Delete</h3>
+        <p>Are you sure you want to delete this contact?</p>
+        <div class="flex justify-end space-x-2 mt-4">
+          <button @click="closeDeleteConfirmation" class="px-4 py-2 bg-gray-200 text-gray-700 border border-gray-300 rounded-md hover:bg-gray-300">
             Cancel
           </button>
-          <button @click="handleDelete" class="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded">
+          <button @click="handleDelete" class="px-4 py-2 bg-red-500 text-white border border-transparent rounded-md hover:bg-red-600">
             Delete
           </button>
         </div>
       </div>
     </div>
-
-    <!-- Success overlay -->
-    <div
-      v-if="showSuccessOverlay"
-      class="fixed top-0 left-0 w-full h-full flex items-center justify-center bg-[rgba(0,0,0,0.7)] z-50"
-    >
-      <div class="bg-white p-8 rounded-lg shadow-md">
-        <p class="text-bl font-bold">{{ successMessage }}</p>
-      </div>
+    <div v-if="showSuccessOverlay" class="fixed top-0 left-0 w-full h-full bg-[rgba(0,0,0,0.7)] flex items-center justify-center z-50">
+        <div class="bg-white px-10 py-3 rounded-md shadow-md text-center">
+            <!-- <OhVueIcon name="io-information-circle-outline" fill="#0f766e" scale="3" /> -->
+            <h3 class="text-lg font-medium mb-4 mt-4 text-gray-700">{{ successMessage }}</h3>
+        </div>
     </div>
   </div>
 </template>
 
 <style scoped>
-/* Add your scoped styles here */
+/* No specific styles needed here, using Tailwind CSS classes */
 </style>
+
 
