@@ -7,7 +7,7 @@ import EventCard from './EventCard.vue';
 import EventModal from './EventModal.vue';
 
 const { monthDays, currentDate, goToPrevMonth, goToNextMonth } = useCalendar();
-const { events, addEvent, updateEvent, deleteEvent, getEventsByDate, confirmEvent } = useEvents();
+const { events, addEvent, updateEvent, deleteEvent, getEventsByDate, confirmEvent, calculateDayTotalDuration, getConfirmedEventsCountByDay } = useEvents();
 const { getContactById } = useContacts();
 
 const selectedEvent = ref(null);
@@ -95,14 +95,14 @@ const isToday = (date: Date): boolean => {
   <div class="max-w-full bg-gray-100 rounded-lg overflow-hidden shadow-md">
     <div class="flex justify-between items-center p-4 bg-primary text-white">
       <button
-        class="opacity-30 bg-opacity-20 bg-white text-black border-none px-3 py-2 rounded-md cursor-pointer hover:opacity-90"
+        class="opacity-30 bg-opacity-20 bg-transparent text-white border-2 border-white px-3 py-2 rounded-md cursor-pointer hover:opacity-90"
         @click="goToPrevMonth"
       >
         ←
       </button>
       <h2 class="m-0 font-bold text-xl">{{ monthYear() }}</h2>
       <button
-        class="opacity-30 bg-opacity-20 bg-white text-black border-none px-3 py-2 rounded-md cursor-pointer hover:opacity-90"
+        class="opacity-30 bg-opacity-20 bg-transparent border-2 border-white text-white px-3 py-2 rounded-md cursor-pointer hover:opacity-90"
         @click="goToNextMonth"
       >
         →
@@ -134,11 +134,15 @@ const isToday = (date: Date): boolean => {
           ]"
           @click="openModal(null, day.date)"
         >
-          <div class="font-bold mb-1 relative">
-            <span v-if="isToday(day.date)" class="bg-primary text-white rounded-full w-6 h-6 flex items-center justify-center text-xs z-10">
+        <div class="font-bold mb-1 relative">
+            <span v-if="isToday(day.date)" class="bg-primary text-white rounded-full w-6 h-6 flex items-center justify-center text-xs z-10 absolute top-[-6px] left-[-6px]">
               {{ day.date.getDate() }}
             </span>
             <span v-else>{{ day.date.getDate() }}</span>
+            <!-- Display confirmed events count and duration -->
+            <div v-if="getConfirmedEventsCountByDay(day.date) > 0" class="absolute top-1 right-1 text-[0.6rem] text-gray-600">
+              {{ getConfirmedEventsCountByDay(day.date) }} {{ getConfirmedEventsCountByDay(day.date) === 1 ? 'client' : 'clients' }} ({{ calculateDayTotalDuration(day.date) }})
+            </div>
           </div>
 
           <div class="overflow-y-auto flex-grow">

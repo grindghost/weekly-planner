@@ -18,7 +18,7 @@ const isHomeRoute = computed(() => route.path === '/');
 </script>
 
 <template>
-  <div class="bg-gray-100 min-h-screen">
+  <div class="bg-gray-100 min-h-screen w-full">
     <!-- Header Bar -->
     <header
       class="bg-white shadow-md fixed top-0 left-0 w-full z-10 p-4 flex items-center justify-between"

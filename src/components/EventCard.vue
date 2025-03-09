@@ -22,6 +22,7 @@ interface Event {
 
 const props = defineProps<{
   event: Event;
+  compact?: boolean; // New: compact prop
 }>();
 
 const emits = defineEmits(['edit', 'delete', 'update']);
@@ -112,13 +113,13 @@ const textDecorationStyle = computed(() => {
     >
       <OhVueIcon :name="getInjectionType === 'intravenous' ? 'ri-syringe-fill' : 'ri-syringe-fill'" :scale="0.7" />
     </div>
-    <div class="text-[0.8rem] mb-1" :style="{ textDecoration: textDecorationStyle }">
+    <div v-if="!compact" class="text-[0.8rem] mb-1" :style="{ textDecoration: textDecorationStyle }">
       {{ formatTime(props.event.start) }} - {{ formatTime(props.event.end) }}
     </div>
     <div v-if="getAntibiotic" class="leading-tight font-light tracking-tight text-[0.7rem]" :style="{ textDecoration: textDecorationStyle }">
       {{ getAntibiotic }}
     </div>
-    <div class="flex flex-row gap-1 mt-3">
+    <div v-if="!compact" class="flex flex-row gap-1 mt-3">
       <button
         class="bg-primary text-white rounded px-2 py-1 cursor-pointer text-[0.7rem] font-bold"
         @click.stop="emits('edit', props.event.id)"

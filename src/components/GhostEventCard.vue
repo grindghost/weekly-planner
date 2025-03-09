@@ -20,6 +20,7 @@ interface Event {
 
 const props = defineProps<{
   event: Event;
+  compact?: boolean; // New: compact prop
 }>();
 
 const emits = defineEmits(['click']);
@@ -74,7 +75,7 @@ const handleClick = () => {
     >
       <OhVueIcon :name="getInjectionType === 'intravenous' ? 'ri-syringe-fill' : 'ri-syringe-fill'" :scale="0.7" />
     </div>
-    <div class="text-[0.8rem] mb-1">
+    <div v-if="!compact" class="text-[0.8rem] mb-1">
       {{ formatTime(props.event.start) }} - {{ formatTime(props.event.end) }}
     </div>
     <div v-if="getAntibiotic" class="leading-tight font-light tracking-tight text-[0.7rem]">

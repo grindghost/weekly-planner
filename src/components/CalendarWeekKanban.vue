@@ -18,6 +18,14 @@ const {
   confirmEvent,
 } = useEvents();
 
+// New: State for compact view
+const compactView = ref(false);
+
+// New: Function to toggle compact view
+const toggleCompactView = () => {
+  compactView.value = !compactView.value;
+};
+
 const selectedEvent = ref(null);
 const selectedDate = ref(null);
 const isModalOpen = ref(false);
@@ -132,7 +140,14 @@ const isToday = (date: Date) => {
       <div class="text-xl font-bold">
         {{ currentDate.toLocaleString('default', { month: 'long', year: 'numeric' }) }}
       </div>
-      <div class="flex space-x-2">
+      <div class="flex space-x-2 items-center">
+        <span class="mr-2 text-sm">Collapse cards</span>
+        <!-- New: Compact View Toggle -->
+        <label class="switch mr-5">
+            
+            <input type="checkbox" v-model="compactView" id="">
+            <span class="slider round"></span>
+        </label>
         <button
           @click="goToPrevMonth"
           class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded inline-flex items-center"
@@ -185,6 +200,7 @@ const isToday = (date: Date) => {
                 v-for="event in getGhostEventsByDate(day.date)"
                 :key="event.id"
                 :event="event"
+                :compact="compactView"
                 @click="openModal(event)"
                 class="event-in-list mb-2 cursor-pointer transition transform hover:-translate-y-1 hover:shadow-md"
               />
@@ -192,6 +208,7 @@ const isToday = (date: Date) => {
                 v-for="event in getConfirmedEventsByDate(day.date)"
                 :key="event.id"
                 :event="event"
+                :compact="compactView"
                 @edit="openModal(event)"
                 @click.stop="openModal(event)"
                 @delete="handleDeleteEvent"
@@ -235,5 +252,70 @@ const isToday = (date: Date) => {
 </template>
 
 <style scoped>
-/* All styles are replaced by tailwind classes */
+/* Add any custom scoped styles here */
+/* The switch - the box around the slider */
+.switch {
+  position: relative;
+  display: inline-block;
+  width: 40px;
+  height: 20px;
+}
+
+/* Hide default HTML checkbox */
+.switch input {
+  opacity: 0; /*make it transparent*/
+  width: 0;
+  height: 0;
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+
+/* The slider */
+.slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #ccc;
+  -webkit-transition: .4s;
+  transition: .4s;
+}
+
+.slider:before {
+  position: absolute;
+  content: "";
+  height: 16px;
+  width: 16px;
+  left: 2px;
+  bottom: 2px;
+  background-color: white;
+  -webkit-transition: .4s;
+  transition: .4s;
+}
+
+input:checked + .slider {
+  background-color: var(--primary-color);
+}
+
+input:focus + .slider {
+  box-shadow: 0 0 1px var(--primary-color);
+}
+
+input:checked + .slider:before {
+  -webkit-transform: translateX(20px);
+  -ms-transform: translateX(20px);
+  transform: translateX(20px);
+}
+
+/* Rounded sliders */
+.slider.round {
+  border-radius: 34px;
+}
+
+.slider.round:before {
+  border-radius: 50%;
+}
 </style>

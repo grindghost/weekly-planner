@@ -44,6 +44,14 @@ const formatDuration = (totalMinutes: number): string => {
   return `${hours}h${minutes.toString().padStart(2, '0')} (${decimalHours}h)`;
 };
 
+const formatDurationSmall = (totalMinutes: number): string => {
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  const decimalHours = (totalMinutes / 60).toFixed(2);
+
+  return `${decimalHours}h`;
+};
+
 export function useEvents() {
   // Store only confirmed events
   const confirmedEvents = ref<Event[]>([]);
@@ -253,6 +261,21 @@ export function useEvents() {
     return formatDuration(totalMinutes);
   };
 
+    // New function to calculate the total duration for confirmed events on a specific day
+    const calculateDayTotalDuration = (date: Date) => {
+      const dayEvents = getEventsByDate(date).filter(event => event.confirmed);
+      const totalMinutes = dayEvents.reduce((total, event) => {
+        const duration = (event.end.getTime() - event.start.getTime()) / (1000 * 60);
+        return total + duration;
+      }, 0);
+      return formatDurationSmall(totalMinutes);
+    };
+
+    // New function to get the number of confirmed events on a specific day
+    const getConfirmedEventsCountByDay = (date: Date) => {
+      return getEventsByDate(date).filter(event => event.confirmed).length;
+    };
+
   // Get the suggested start time for a new event on a specific date
   // const getSuggestedEventTime = (date: Date) => {
   //   const eventsOnDay = getEventsByDate(date);
@@ -392,5 +415,7 @@ export function useEvents() {
     calculateWeekTotalDuration,
     getSuggestedEventTime,
     confirmEvent,
+    calculateDayTotalDuration,
+    getConfirmedEventsCountByDay,
   };
 }

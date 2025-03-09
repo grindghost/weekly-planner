@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { ref, defineProps, defineEmits, onMounted, watch, computed } from 'vue';
+import { ref, defineProps, defineEmits, onMounted, watch, computed, onUnmounted } from 'vue';
 import { useEvents } from '../composables/useEvents';
-import { useContacts } from '../composables/useContacts'; // Import useContacts
+import { useContacts } from '../composables/useContacts';
 import { Contact } from '../types/Contact';
-import { useRouter } from 'vue-router'; // Import useRouter
+import { useRouter } from 'vue-router';
 
 interface Event {
   id?: string;
@@ -11,7 +11,7 @@ interface Event {
   start: Date;
   end: Date;
   description?: string;
-  contactId?: string | null; // Add contactId
+  contactId?: string | null;
   confirmed?: boolean;
 }
 
@@ -22,16 +22,16 @@ const props = defineProps<{
 }>();
 
 const emits = defineEmits(['close', 'save']);
-const { getSuggestedEventTime, confirmEvent, updateEvent, addEvent } = useEvents();
-const { contacts, getContactById } = useContacts(); // Get the contact list and getContactById
-const router = useRouter(); // Get the router instance
+const { getSuggestedEventTime, confirmEvent, updateEvent, addEvent, events } = useEvents();
+const { contacts, getContactById } = useContacts();
+const router = useRouter();
 
 const title = ref('');
 const startDate = ref('');
 const startTime = ref('');
 const endTime = ref('');
 const description = ref('');
-const selectedContact = ref<Contact | null>(null); // Selected contact
+const selectedContact = ref<Contact | null>(null);
 
 // Initialize form with default values or event data
 const initializeForm = () => {
@@ -72,6 +72,11 @@ watch(
   (isOpen) => {
     if (isOpen) {
       initializeForm();
+      // Add event listener for Escape key when modal opens
+      window.addEventListener('keydown', handleEscapeKey);
+    } else {
+      // Remove event listener when modal closes
+      window.removeEventListener('keydown', handleEscapeKey);
     }
   }
 );
@@ -80,8 +85,23 @@ watch(
 onMounted(() => {
   if (props.isOpen) {
     initializeForm();
+    // Add event listener for Escape key when modal opens
+    window.addEventListener('keydown', handleEscapeKey);
   }
 });
+
+//Cleanup
+onUnmounted(() => {
+  // Remove event listener when component unmounts
+  window.removeEventListener('keydown', handleEscapeKey);
+})
+
+// Handle Escape key press
+const handleEscapeKey = (event: KeyboardEvent) => {
+  if (event.key === 'Escape') {
+    emits('close');
+  }
+};
 
 const isConfirmingGhost = computed(() => props.event?.confirmed === false);
 
@@ -100,7 +120,7 @@ const saveEvent = () => {
       newEvent.contactId = null;
   }
   if (props.event?.confirmed === false) {
-    // confirmEvent({...newEvent, id: props.event.id}); // Confirmed the ghost event with the old id
+     confirmEvent({...newEvent, id: props.event.id}); // Confirmed the ghost event with the old id
     // addEvent({...newEvent, id: undefined, confirmed: true}) // create a new one
   } else {
      updateEvent(newEvent.id as string, newEvent); // Update the old event
@@ -136,6 +156,70 @@ const modalTitle = computed(() => {
     }
 });
 
+// Helper function to format the next recurrence date
+const formatRecurrenceDate = (date: Date): string => {
+    const options: Intl.DateTimeFormatOptions = { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric', hour: 'numeric', minute: 'numeric' };
+    return date.toLocaleDateString('en-US', options);
+};
+
+// Helper function to check if a date is valid
+const isValidDate = (date: Date): boolean => {
+  return !isNaN(date.getTime());
+};
+
+// Computed property to get the next recurrence date
+const nextRecurrenceDate = computed<string | null>(() => {
+  if (!selectedContact.value) return null;
+
+  const { antibioticRecurrenceValue, antibioticRecurrenceUnit } = selectedContact.value;
+  if (!antibioticRecurrenceValue) return null;
+
+  // Create a Date object from the form values
+  const potentialBaseDate = new Date(`${startDate.value}T${startTime.value}`);
+
+  // Check if the created date is valid
+  let baseDate: Date;
+  if (isValidDate(potentialBaseDate)) {
+    baseDate = potentialBaseDate;
+  } else {
+    // If it's not valid, get the last day of the month
+    const year = parseInt(startDate.value.split('-')[0]);
+    const month = parseInt(startDate.value.split('-')[1]) -1; // Months are 0-indexed
+    const lastDayOfMonth = new Date(year, month + 1, 0);
+    baseDate = new Date(lastDayOfMonth.toISOString().split('T')[0] + `T${startTime.value}`);
+  }
+
+  // Calculate the next recurrence date
+  const nextStartDate = new Date(baseDate);
+  if (antibioticRecurrenceUnit === 'day') {
+      nextStartDate.setDate(nextStartDate.getDate() + antibioticRecurrenceValue);
+  } else if (antibioticRecurrenceUnit === 'week') {
+      nextStartDate.setDate(nextStartDate.getDate() + antibioticRecurrenceValue * 7);
+  }
+
+  return formatRecurrenceDate(nextStartDate);
+});
+
+// Watcher to update the ghost event date when contact changes
+watch(
+  () => selectedContact.value,
+  () => {
+    // Recompute nextRecurrenceDate when selectedContact changes
+    nextRecurrenceDate.value;
+  },
+  {deep: true}
+);
+
+// Watcher to update the ghost event date when date or time changes
+watch(
+    () => [startDate.value, startTime.value],
+    () => {
+      // Recompute nextRecurrenceDate when selectedContact changes
+      nextRecurrenceDate.value;
+    },
+    {deep: true}
+  );
+
 </script>
 
 <template>
@@ -148,6 +232,11 @@ const modalTitle = computed(() => {
       <!--  -->
 
       <h2 class="font-bold text-xl mb-3">{{ modalTitle }}</h2>
+
+         <!-- Next Recurrence Date Display -->
+        <div v-if="nextRecurrenceDate" class="text-sm mb-2 text-gray-600">
+            Next Recurrence: <span class="font-bold">{{ nextRecurrenceDate }}</span>
+        </div>
        <!-- Contact Phone Number (only if not confirmed) -->
         <div v-if="!isEventConfirmed && getContactPhoneNumber" class="text-sm mb-2 text-gray-600">
           Contact Phone: <span class="font-bold underline">{{ getContactPhoneNumber }}</span>
