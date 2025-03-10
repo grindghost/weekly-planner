@@ -83,6 +83,10 @@ export const useContacts = () => {
     return antibiotics.value.find((a) => a.id === id);
   }
 
+  const getAntibioticByName = (name:string) => {
+    return antibiotics.value.find((a) => a.name === name);
+}
+
   const allAntibiotics = computed(() => antibiotics.value);
   const allContacts = computed(() => contacts.value);
 
@@ -97,5 +101,6 @@ export const useContacts = () => {
     updateAntibiotic,
     deleteAntibiotic,
     getAntibioticById,
+    getAntibioticByName,
   };
 };

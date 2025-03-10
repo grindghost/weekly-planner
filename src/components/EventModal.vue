@@ -23,7 +23,7 @@ const props = defineProps<{
 
 const emits = defineEmits(['close', 'save']);
 const { getSuggestedEventTime, confirmEvent, updateEvent, addEvent, events } = useEvents();
-const { contacts, getContactById, antibiotics } = useContacts(); // Get the antibiotics array
+const { contacts, getContactById, antibiotics, getAntibioticByName } = useContacts(); // Get the antibiotics array
 const router = useRouter();
 
 const title = ref('');
@@ -46,17 +46,17 @@ const initializeForm = () => {
     selectedContact.value = contacts.value.find(contact => contact.id === props.event?.contactId) || null;
     
   } else if (props.date) {
-    // New event with suggested times
-    const { startTime: suggestedStart, endTime: suggestedEnd } = getSuggestedEventTime(props.date);
-
-    title.value = '';
-    startDate.value = props.date.toISOString().split('T')[0];
-    startTime.value = suggestedStart.toTimeString().split(' ')[0].slice(0, 5);
-    endTime.value = suggestedEnd.toTimeString().split(' ')[0].slice(0, 5);
-    description.value = '';
+    // New event with suggested times for the current date
+    updateSuggestedTime(props.date, selectedContact.value?.id || null);
+    
+    //reset the fields values:
+    title.value = "";
+    description.value = "";
     selectedContact.value = null;
+    startDate.value = props.date.toISOString().split('T')[0];
+
   } else {
-    // Fallback to empty values
+    // Fallback to empty values (no event and no date)
     const today = new Date();
     title.value = '';
     startDate.value = today.toISOString().split('T')[0];
@@ -65,11 +65,11 @@ const initializeForm = () => {
     description.value = '';
     selectedContact.value = null;
   }
-    //always update the description and the title
-    updateDescription();
-    updateTitle();
+  //always update the description and the title
+  updateDescription();
+  updateTitle();
+  
 };
-
 // Watch for modal open state changes
 watch(
   () => props.isOpen,
@@ -159,6 +159,15 @@ const modalTitle = computed(() => {
     }
 });
 
+// Helper function to update the start and end times
+const updateSuggestedTime = (date: Date, contactId: string | null) => {
+    const { startTime: suggestedStart, endTime: suggestedEnd } = getSuggestedEventTime(date, contactId);
+
+    startTime.value = suggestedStart.toTimeString().split(' ')[0].slice(0, 5);
+    endTime.value = suggestedEnd.toTimeString().split(' ')[0].slice(0, 5);
+
+};
+
 // Helper function to format the next recurrence date
 const formatRecurrenceDate = (date: Date): string => {
     const options: Intl.DateTimeFormatOptions = { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric', hour: 'numeric', minute: 'numeric' };
@@ -204,15 +213,39 @@ const nextRecurrenceDate = computed<string | null>(() => {
 });
 
 // Watcher to update the ghost event date when contact changes
+// watch(
+//   () => selectedContact.value,
+//   () => {
+//     // Recompute nextRecurrenceDate when selectedContact changes
+//     nextRecurrenceDate.value;
+//     // Update title and other fields
+//     updateTitle();
+//     updateDescription();
+
+//   },
+//   {deep: true}
+// );
+
+// Watch for date changes
+watch(() => props.date, (newDate) => {
+  if (newDate && !props.event) {
+    updateSuggestedTime(newDate, selectedContact.value?.id || null);
+  }
+});
+
+// Watcher to update the ghost event date when contact changes
 watch(
   () => selectedContact.value,
   () => {
     // Recompute nextRecurrenceDate when selectedContact changes
     nextRecurrenceDate.value;
+    // Update the start and end time when the contact changes
+     if (props.date) {
+        updateSuggestedTime(props.date, selectedContact.value?.id || null);
+      }
     // Update title and other fields
     updateTitle();
     updateDescription();
-
   },
   {deep: true}
 );

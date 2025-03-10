@@ -14,20 +14,6 @@ interface Event {
   isCompleted: boolean;
 }
 
-// Helper function to calculate the next recurrence date
-// const calculateNextRecurrenceDate = (
-//   lastDate: Date,
-//   recurrenceValue: number,
-//   recurrenceUnit: 'day' | 'week'
-// ): Date => {
-//   const nextDate = new Date(lastDate.getTime()); // Create new Date to avoid reference issues
-//   if (recurrenceUnit === 'day') {
-//     nextDate.setDate(nextDate.getDate() + recurrenceValue);
-//   } else if (recurrenceUnit === 'week') {
-//     nextDate.setDate(nextDate.getDate() + recurrenceValue * 7);
-//   }
-//   return nextDate;
-// };
 
 // Helper function to calculate the next recurrence date, skipping weekends
 const calculateNextRecurrenceDate = (
@@ -84,7 +70,8 @@ export function useEvents() {
   // Store all ghost events
   const ghostEvents = ref<Event[]>([]);
 
-  const { getContactById } = useContacts();
+  const { getContactById, getAntibioticByName } = useContacts();
+
 
   // Function to generate next ghost events
   const generateGhostEvents = (event: Event) => {
@@ -114,8 +101,6 @@ export function useEvents() {
         confirmed: false, // Ghost event
       });
 
-      console.log(new Date(nextStartDate.getTime()))
-
       lastEventDate = new Date(nextEndDate.getTime()); // Create new Date to avoid reference issues
     }
     return newEvents;
@@ -124,41 +109,6 @@ export function useEvents() {
   // Flag to prevent recursive calls
   let isGeneratingGhostEvents = false;
 
-  // Function to generate all ghost events from confirmed events
-  // const generateAllGhostEvents = () => {
-  //   // Guard against recursive calls
-  //   if (isGeneratingGhostEvents) return;
-    
-  //   isGeneratingGhostEvents = true;
-  //   try {
-  //     ghostEvents.value = [];
-  //     confirmedEvents.value.forEach(confirmedEvent => {
-  //       ghostEvents.value.push(...generateGhostEvents(confirmedEvent));
-  //     });
-  //   } finally {
-  //     isGeneratingGhostEvents = false;
-  //   }
-  // };
-
-  // const generateAllGhostEvents = () => {
-  //   // Guard against recursive calls
-  //   if (isGeneratingGhostEvents) return;
-
-  //   isGeneratingGhostEvents = true;
-  //   try {
-  //     ghostEvents.value = [];
-  //     // Find the most recent confirmed event
-  //     if (confirmedEvents.value.length > 0) {
-  //       const mostRecentConfirmedEvent = confirmedEvents.value.reduce((mostRecent, current) => {
-  //         return current.end > mostRecent.end ? current : mostRecent;
-  //       }, confirmedEvents.value[0]); // Initialize with the first event
-
-  //       ghostEvents.value.push(...generateGhostEvents(mostRecentConfirmedEvent));
-  //     }
-  //   } finally {
-  //     isGeneratingGhostEvents = false;
-  //   }
-  // };
 
   const generateAllGhostEvents = () => {
     // Guard against recursive calls
@@ -214,8 +164,9 @@ export function useEvents() {
     
     if (newEvent.confirmed) {
       confirmedEvents.value.push(newEvent);
+      generateAllGhostEvents();
     }
-    // No need to call generateAllGhostEvents here, the watcher will handle it
+
   };
 
   const updateEvent = (id: string, updatedEvent: Partial<Event>) => {
@@ -235,8 +186,8 @@ export function useEvents() {
         title: updatedEvent.title ?? oldEvent.title,
         description: updatedEvent.description ?? oldEvent.description,
         isCompleted: updatedEvent.isCompleted ?? oldEvent.isCompleted,//add this line
-
       };
+      generateAllGhostEvents(); // Call here, to regenerate the ghost events.
     }
     if (ghostIndex !== -1) {
         const oldEvent = ghostEvents.value[ghostIndex];
@@ -266,10 +217,46 @@ export function useEvents() {
 
   const getEventsByDate = (date: Date) => {
     const dateString = date.toDateString();
+
     return getAllEvents.value
       .filter((event) => event.start.toDateString() === dateString)
       .sort((a, b) => a.start.getTime() - b.start.getTime());
   };
+
+    // Temporary debugging method to retrieve and filter confirmed events from localStorage
+    const getConfirmedEventsFromLocalStorageByDate = (date: Date): Event[] => {
+      const savedEvents = localStorage.getItem('calendar-events');
+      if (!savedEvents) {
+        console.warn('No events found in localStorage.');
+        return [];
+      }
+  
+      try {
+        const parsedEvents = JSON.parse(savedEvents) as Event[];
+        // console.log("events found in the local storage: ", parsedEvents);
+  
+        const confirmedEvents = parsedEvents
+          .map((event) => ({
+            ...event,
+            start: parseDateString(event.start),
+            end: parseDateString(event.end),
+          }))
+          .filter((event) => {
+            const eventDate = event.start;
+            return (
+              eventDate.getFullYear() === date.getFullYear() &&
+              eventDate.getMonth() === date.getMonth() &&
+              eventDate.getDate() === date.getDate()
+            );
+          })
+          .sort((a, b) => a.start.getTime() - b.start.getTime());
+        // console.log('getConfirmedEventsFromLocalStorageByDate - Filtered and sorted events:', confirmedEvents);
+        return confirmedEvents;
+      } catch (error) {
+        console.error('Error parsing events from localStorage:', error);
+        return [];
+      }
+    };
 
   const getEventsByWeek = (weekStart: Date, weekEnd: Date) => {
     return confirmedEvents.value.filter(event =>
@@ -302,32 +289,7 @@ export function useEvents() {
       return getEventsByDate(date).filter(event => event.confirmed).length;
     };
 
-  // Get the suggested start time for a new event on a specific date
-  // const getSuggestedEventTime = (date: Date) => {
-  //   const eventsOnDay = getEventsByDate(date);
-
-  //   // If no events, suggest 8:00 AM
-  //   if (eventsOnDay.length === 0) {
-  //     const startTime = new Date(date);
-  //     startTime.setHours(8, 0, 0, 0);
-
-  //     const endTime = new Date(startTime);
-  //     endTime.setHours(9, 0, 0, 0);
-
-  //     return { startTime, endTime };
-  //   }
-
-  //   // Otherwise, use end time of last event
-  //   const lastEvent = eventsOnDay[eventsOnDay.length - 1];
-  //   const startTime = new Date(lastEvent.end.getTime());
-
-  //   const endTime = new Date(startTime.getTime());
-  //   endTime.setTime(startTime.getTime() + 60 * 60 * 1000); // Add 1 hour
-
-  //   return { startTime, endTime };
-  // };
-
-  const getSuggestedEventTime = (date: Date) => {
+  const v1_getSuggestedEventTime = (date: Date) => {
     // Get only confirmed events for the specified date
     const confirmedEventsOnDay = getEventsByDate(date).filter(event => event.confirmed);
 
@@ -356,6 +318,69 @@ export function useEvents() {
     return { startTime, endTime };
   };
 
+      // Modified getSuggestedEventTime function
+      const getSuggestedEventTime = (date: Date, contactId: string | null) => {
+
+        // Get only confirmed events for the specified date
+        const confirmedEventsOnDay = getConfirmedEventsFromLocalStorageByDate(date).filter(event => event.confirmed);
+        
+        const ghostEventsOnDay = getEventsByDate(date).filter(event => !event.confirmed);
+
+        const allEventsOnDay = [...confirmedEventsOnDay, ...ghostEventsOnDay].sort((a, b) => a.start.getTime() - b.start.getTime()); // Sort all events by 
+
+        let antibioticDuration = 1;
+        if (contactId) {
+          const contact = getContactById(contactId);
+          if(contact?.antibiotic){
+            const antibiotic = getAntibioticByName(contact.antibiotic);
+            antibioticDuration = antibiotic ? antibiotic.duration : 1;
+          }
+        }
+
+        // Check if there are any events on that day.
+        if (allEventsOnDay.length === 0) {
+            // If no events, suggest 8:00 AM
+            const startTime = new Date(date);
+            startTime.setHours(8, 0, 0, 0);
+    
+            const endTime = new Date(startTime);
+            endTime.setTime(startTime.getTime() + antibioticDuration * 60 * 60 * 1000);
+    
+            return { startTime, endTime };
+        }
+
+        // Find available time slot
+        let suggestedStartTime = new Date(date);
+        suggestedStartTime.setHours(8, 0, 0, 0); // Start checking from 8:00 AM
+
+        for (let hour = 8; hour < 18; hour++) { // Check until 18:00
+          suggestedStartTime.setHours(hour, 0, 0, 0);
+          const suggestedEndTime = new Date(suggestedStartTime);
+          suggestedEndTime.setTime(suggestedStartTime.getTime() + antibioticDuration * 60 * 60 * 1000);
+
+          // Check if the time slot is available
+          let isSlotAvailable = true;
+          for (const event of allEventsOnDay) {
+            if (suggestedStartTime.getTime() < event.end.getTime() && suggestedEndTime.getTime() > event.start.getTime()) {
+              isSlotAvailable = false; // Overlap found
+              break;
+            }
+          }
+
+          if (isSlotAvailable) {
+            return { startTime: suggestedStartTime, endTime: suggestedEndTime };
+          }
+        }
+
+        // If no time slot is available during the day, use the last event's end time + 1 hour
+        const lastEvent = allEventsOnDay[allEventsOnDay.length - 1];
+        const startTime = new Date(lastEvent.end.getTime());
+        const endTime = new Date(startTime.getTime());
+        endTime.setTime(startTime.getTime() + antibioticDuration * 60 * 60 * 1000);
+        return { startTime, endTime };
+
+    };
+
 
   const confirmEvent = (event: Event) => {
 
@@ -378,7 +403,6 @@ export function useEvents() {
 
     generateAllGhostEvents();
     
-    // No need to call generateAllGhostEvents here, the watcher will handle it
   };
 
   // Load events from localStorage on mount
