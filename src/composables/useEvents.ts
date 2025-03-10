@@ -15,17 +15,43 @@ interface Event {
 }
 
 // Helper function to calculate the next recurrence date
+// const calculateNextRecurrenceDate = (
+//   lastDate: Date,
+//   recurrenceValue: number,
+//   recurrenceUnit: 'day' | 'week'
+// ): Date => {
+//   const nextDate = new Date(lastDate.getTime()); // Create new Date to avoid reference issues
+//   if (recurrenceUnit === 'day') {
+//     nextDate.setDate(nextDate.getDate() + recurrenceValue);
+//   } else if (recurrenceUnit === 'week') {
+//     nextDate.setDate(nextDate.getDate() + recurrenceValue * 7);
+//   }
+//   return nextDate;
+// };
+
+// Helper function to calculate the next recurrence date, skipping weekends
 const calculateNextRecurrenceDate = (
   lastDate: Date,
   recurrenceValue: number,
   recurrenceUnit: 'day' | 'week'
 ): Date => {
-  const nextDate = new Date(lastDate.getTime()); // Create new Date to avoid reference issues
+  let nextDate = new Date(lastDate.getTime());
+
   if (recurrenceUnit === 'day') {
     nextDate.setDate(nextDate.getDate() + recurrenceValue);
   } else if (recurrenceUnit === 'week') {
     nextDate.setDate(nextDate.getDate() + recurrenceValue * 7);
   }
+
+  // Check for weekend and move to Monday if needed
+  if (nextDate.getDay() === 0) {
+    // Sunday
+    nextDate.setDate(nextDate.getDate() + 1); // Move to Monday
+  } else if (nextDate.getDay() === 6) {
+    // Saturday
+    nextDate.setDate(nextDate.getDate() + 2); // Move to Monday
+  }
+
   return nextDate;
 };
 
