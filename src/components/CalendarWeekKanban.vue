@@ -16,6 +16,7 @@ const {
   getEventsByWeek,
   calculateWeekTotalDuration,
   confirmEvent,
+  getConfirmedEventsFromLocalStorageByDate,
 } = useEvents();
 
 // New: State for compact view
@@ -53,6 +54,18 @@ const getConfirmedClientEventsByDate = (date: Date) => {
 // Filter ghost events
 const getGhostEventsByDate = (date: Date) => {
   return getEventsByDate(date).filter((event) => !event.confirmed);
+};
+
+// **New: Combined and sorted events**
+const getSortedEventsByDate = (date: Date) => {
+  const confirmedEvents = getConfirmedEventsFromLocalStorageByDate(date);
+  const ghostEvents = getGhostEventsByDate(date);
+
+  // Combine events
+  const allEvents = [...ghostEvents, ...confirmedEvents];
+
+  // Sort by start time
+  return allEvents.sort((a, b) => a.start.getTime() - b.start.getTime());
 };
 
 const handleSaveEvent = (eventData: any) => {
@@ -196,7 +209,22 @@ const isToday = (date: Date) => {
             </h3>
 
             <div class="day-events p-1">
-              <GhostEventCard
+
+              <!-- **New: Single loop for all sorted events** -->
+              <component
+                  v-for="event in getSortedEventsByDate(day.date)"
+                  :key="event.id"
+                  :is="event.confirmed ? EventCard : GhostEventCard"
+                  :event="event"
+                  :compact="compactView"
+                  @edit="openModal(event)"
+                  @click="openModal(event)"
+                  @delete="handleDeleteEvent"
+                  @update="handleUpdateEvent"
+                  class="event-in-list mb-2 cursor-pointer transition transform hover:-translate-y-1 hover:shadow-md"
+                />              
+
+              <!-- <GhostEventCard
                 v-for="event in getGhostEventsByDate(day.date)"
                 :key="event.id"
                 :event="event"
@@ -214,7 +242,7 @@ const isToday = (date: Date) => {
                 @delete="handleDeleteEvent"
                 @update="handleUpdateEvent"
                 class="event-in-list mb-2 cursor-pointer transition transform hover:-translate-y-1 hover:shadow-md"
-              />
+              /> -->
 
               <button
                 class="add-event-btn w-full border-2 border-dashed border-gray-300 rounded-md mt-2 cursor-pointer text-gray-600 hover:bg-gray-200 hover:text-gray-800"

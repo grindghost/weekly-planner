@@ -14,6 +14,19 @@ interface Event {
   isCompleted: boolean;
 }
 
+ // Helper function to insert an event in chronological order
+ const insertEventInOrder = (events: Event[], newEvent: Event) => {
+  const insertionIndex = events.findIndex(event => newEvent.start.getTime() < event.start.getTime());
+  if (insertionIndex === -1) {
+      // If the new event is after all existing events, push it to the end
+      events.push(newEvent);
+  } else {
+      // Otherwise, insert it at the correct index
+      events.splice(insertionIndex, 0, newEvent);
+  }
+};
+
+
 
 // Helper function to calculate the next recurrence date, skipping weekends
 const calculateNextRecurrenceDate = (
@@ -72,9 +85,93 @@ export function useEvents() {
 
   const { getContactById, getAntibioticByName } = useContacts();
 
+  // Helper function to find available time slot for a ghost event
+  const findAvailableTimeSlot = (date: Date, durationInHours: number): { startTime: Date, endTime: Date } => {
+      // Get only confirmed events for the specified date
+      const confirmedEventsOnDay = getConfirmedEventsFromLocalStorageByDate(date).filter(event => event.confirmed);
+      
+      const ghostEventsOnDay = getEventsByDate(date).filter(event => !event.confirmed);
+
+      const allEventsOnDay = [...confirmedEventsOnDay, ...ghostEventsOnDay].sort((a, b) => a.start.getTime() - b.start.getTime()); // Sort all events by 
+
+    const startTime = new Date(date);
+    startTime.setHours(8, 0, 0, 0); // Start checking from 8:00 AM
+
+    for (let hour = 8; hour < 18; hour++) { // Check until 18:00
+      startTime.setHours(hour, 0, 0, 0);
+      const endTime = new Date(startTime);
+      endTime.setTime(startTime.getTime() + durationInHours * 60 * 60 * 1000);
+
+      // Check if the time slot is available
+      let isSlotAvailable = true;
+      for (const event of allEventsOnDay) {
+        if (startTime.getTime() < event.end.getTime() && endTime.getTime() > event.start.getTime()) {
+          isSlotAvailable = false; // Overlap found
+          break;
+        }
+      }
+
+      if (isSlotAvailable) {
+        return { startTime, endTime };
+      }
+    }
+
+    // If no time slot is available during the day, use the last event's end time + duration
+    const lastEvent = allEventsOnDay.length > 0 ? allEventsOnDay[allEventsOnDay.length - 1] : null;
+    if (lastEvent) {
+      startTime.setTime(lastEvent.end.getTime());
+    } else{
+      startTime.setHours(18, 0, 0, 0)
+    }
+    const endTime = new Date(startTime.getTime());
+    endTime.setTime(startTime.getTime() + durationInHours * 60 * 60 * 1000);
+    return { startTime, endTime };
+  };
+
+// Function to generate next ghost events
+const generateGhostEvents = (event: Event) => {
+  const newEvents: Event[] = [];
+  const contact = getContactById(event.contactId as string);
+  if (!contact || !contact.antibioticRecurrenceValue) return [];
+
+  let firstEventDate = new Date(event.start.getTime());
+  let lastEventDate = new Date(event.end.getTime());
+  
+  // loop once to create one ghost event
+  for (let i = 0; i < 1; i++) {
+    const nextStartDate = calculateNextRecurrenceDate(
+      firstEventDate,
+      contact.antibioticRecurrenceValue,
+      contact.antibioticRecurrenceUnit || 'week'
+    );
+    
+    let antibioticDuration = 1;
+    if(contact.antibiotic){
+      const antibiotic = getAntibioticByName(contact.antibiotic);
+      antibioticDuration = antibiotic ? antibiotic.duration : 1;
+    }
+
+    const { startTime: nextEventStartTime, endTime: nextEventEndTime } = findAvailableTimeSlot(nextStartDate, antibioticDuration);
+
+    newEvents.push({
+      id: uuidv4(),
+      start: new Date(nextEventStartTime.getTime()),
+      end: new Date(nextEventEndTime.getTime()),
+      contactId: event.contactId,
+      confirmed: false, // Ghost event
+      title: 'Ghost Event', // Add default title
+      description: '', // Add default description
+      isCompleted: false, // Add default isCompleted
+    });
+
+    lastEventDate = new Date(nextEventEndTime.getTime()); // Update lastEventDate
+  }
+  return newEvents;
+};
+
 
   // Function to generate next ghost events
-  const generateGhostEvents = (event: Event) => {
+  const v1_generateGhostEvents = (event: Event) => {
     const newEvents: Event[] = [];
     const contact = getContactById(event.contactId as string);
     if (!contact || !contact.antibioticRecurrenceValue) return [];
@@ -143,10 +240,10 @@ export function useEvents() {
 };
 
 
-
   // Function to get all confirmed events, and dynamically compute ghost events
   const getAllEvents = computed(() => {
-    return [...confirmedEvents.value, ...ghostEvents.value];
+    console.log("confirmedEvents.value: ", confirmedEvents.value);
+    return [...confirmedEvents.value, ...ghostEvents.value].sort((a, b) => a.start.getTime() - b.start.getTime());
   });
 
   const addEvent = (event: Event) => {
@@ -163,9 +260,14 @@ export function useEvents() {
     };
     
     if (newEvent.confirmed) {
-      confirmedEvents.value.push(newEvent);
+      insertEventInOrder(confirmedEvents.value, newEvent); // Insert in chronological order
+      confirmedEvents.value.sort((a,b) => a.start.getTime() - b.start.getTime());
       generateAllGhostEvents();
-    }
+
+  } else{
+      insertEventInOrder(ghostEvents.value, newEvent); // Insert in chronological order
+      ghostEvents.value.sort((a,b) => a.start.getTime() - b.start.getTime());
+  }
 
   };
 
@@ -187,6 +289,7 @@ export function useEvents() {
         description: updatedEvent.description ?? oldEvent.description,
         isCompleted: updatedEvent.isCompleted ?? oldEvent.isCompleted,//add this line
       };
+      confirmedEvents.value.sort((a,b) => a.start.getTime() - b.start.getTime());//sort after update
       generateAllGhostEvents(); // Call here, to regenerate the ghost events.
     }
     if (ghostIndex !== -1) {
@@ -204,6 +307,8 @@ export function useEvents() {
           isCompleted: updatedEvent.isCompleted ?? oldEvent.isCompleted, //add this line
 
         };
+        ghostEvents.value.sort((a,b) => a.start.getTime() - b.start.getTime()); //sort after update
+
     }
     // No need to call generateAllGhostEvents here, the watcher will handle it
   };
@@ -258,6 +363,8 @@ export function useEvents() {
       }
     };
 
+
+
   const getEventsByWeek = (weekStart: Date, weekEnd: Date) => {
     return confirmedEvents.value.filter(event =>
       event.start.getTime() >= weekStart.getTime() && 
@@ -289,97 +396,68 @@ export function useEvents() {
       return getEventsByDate(date).filter(event => event.confirmed).length;
     };
 
-  const v1_getSuggestedEventTime = (date: Date) => {
-    // Get only confirmed events for the specified date
-    const confirmedEventsOnDay = getEventsByDate(date).filter(event => event.confirmed);
+    // Modified getSuggestedEventTime function
+    const getSuggestedEventTime = (date: Date, contactId: string | null) => {
 
-    // If no confirmed events, suggest 8:00 AM
-    if (confirmedEventsOnDay.length === 0) {
+      // Get only confirmed events for the specified date
+      const confirmedEventsOnDay = getConfirmedEventsFromLocalStorageByDate(date).filter(event => event.confirmed);
       
-      const startTime = new Date(date);
-      startTime.setHours(8, 0, 0, 0);
+      const ghostEventsOnDay = getEventsByDate(date).filter(event => !event.confirmed);
 
-      const endTime = new Date(startTime);
-      endTime.setHours(9, 0, 0, 0);
+      const allEventsOnDay = [...confirmedEventsOnDay, ...ghostEventsOnDay].sort((a, b) => a.start.getTime() - b.start.getTime()); // Sort all events by 
 
+      let antibioticDuration = 1;
+      if (contactId) {
+        const contact = getContactById(contactId);
+        if(contact?.antibiotic){
+          const antibiotic = getAntibioticByName(contact.antibiotic);
+          antibioticDuration = antibiotic ? antibiotic.duration : 1;
+        }
+      }
+
+      // Check if there are any events on that day.
+      if (allEventsOnDay.length === 0) {
+          // If no events, suggest 8:00 AM
+          const startTime = new Date(date);
+          startTime.setHours(8, 0, 0, 0);
+  
+          const endTime = new Date(startTime);
+          endTime.setTime(startTime.getTime() + antibioticDuration * 60 * 60 * 1000);
+  
+          return { startTime, endTime };
+      }
+
+      // Find available time slot
+      let suggestedStartTime = new Date(date);
+      suggestedStartTime.setHours(8, 0, 0, 0); // Start checking from 8:00 AM
+
+      for (let hour = 8; hour < 18; hour++) { // Check until 18:00
+        suggestedStartTime.setHours(hour, 0, 0, 0);
+        const suggestedEndTime = new Date(suggestedStartTime);
+        suggestedEndTime.setTime(suggestedStartTime.getTime() + antibioticDuration * 60 * 60 * 1000);
+
+        // Check if the time slot is available
+        let isSlotAvailable = true;
+        for (const event of allEventsOnDay) {
+          if (suggestedStartTime.getTime() < event.end.getTime() && suggestedEndTime.getTime() > event.start.getTime()) {
+            isSlotAvailable = false; // Overlap found
+            break;
+          }
+        }
+
+        if (isSlotAvailable) {
+          return { startTime: suggestedStartTime, endTime: suggestedEndTime };
+        }
+      }
+
+      // If no time slot is available during the day, use the last event's end time + 1 hour
+      const lastEvent = allEventsOnDay[allEventsOnDay.length - 1];
+      const startTime = new Date(lastEvent.end.getTime());
+      const endTime = new Date(startTime.getTime());
+      endTime.setTime(startTime.getTime() + antibioticDuration * 60 * 60 * 1000);
       return { startTime, endTime };
-    }
 
-    // Otherwise, use end time of last confirmed event
-    const lastConfirmedEvent = confirmedEventsOnDay.reduce((last, current) => {
-      return current.end > last.end ? current : last;
-    }, confirmedEventsOnDay[0]); // Initialize with the first event
-
-    const startTime = new Date(lastConfirmedEvent.end.getTime());
-
-    const endTime = new Date(startTime.getTime());
-    endTime.setTime(startTime.getTime() + 60 * 60 * 1000); // Add 1 hour
-
-    return { startTime, endTime };
   };
-
-      // Modified getSuggestedEventTime function
-      const getSuggestedEventTime = (date: Date, contactId: string | null) => {
-
-        // Get only confirmed events for the specified date
-        const confirmedEventsOnDay = getConfirmedEventsFromLocalStorageByDate(date).filter(event => event.confirmed);
-        
-        const ghostEventsOnDay = getEventsByDate(date).filter(event => !event.confirmed);
-
-        const allEventsOnDay = [...confirmedEventsOnDay, ...ghostEventsOnDay].sort((a, b) => a.start.getTime() - b.start.getTime()); // Sort all events by 
-
-        let antibioticDuration = 1;
-        if (contactId) {
-          const contact = getContactById(contactId);
-          if(contact?.antibiotic){
-            const antibiotic = getAntibioticByName(contact.antibiotic);
-            antibioticDuration = antibiotic ? antibiotic.duration : 1;
-          }
-        }
-
-        // Check if there are any events on that day.
-        if (allEventsOnDay.length === 0) {
-            // If no events, suggest 8:00 AM
-            const startTime = new Date(date);
-            startTime.setHours(8, 0, 0, 0);
-    
-            const endTime = new Date(startTime);
-            endTime.setTime(startTime.getTime() + antibioticDuration * 60 * 60 * 1000);
-    
-            return { startTime, endTime };
-        }
-
-        // Find available time slot
-        let suggestedStartTime = new Date(date);
-        suggestedStartTime.setHours(8, 0, 0, 0); // Start checking from 8:00 AM
-
-        for (let hour = 8; hour < 18; hour++) { // Check until 18:00
-          suggestedStartTime.setHours(hour, 0, 0, 0);
-          const suggestedEndTime = new Date(suggestedStartTime);
-          suggestedEndTime.setTime(suggestedStartTime.getTime() + antibioticDuration * 60 * 60 * 1000);
-
-          // Check if the time slot is available
-          let isSlotAvailable = true;
-          for (const event of allEventsOnDay) {
-            if (suggestedStartTime.getTime() < event.end.getTime() && suggestedEndTime.getTime() > event.start.getTime()) {
-              isSlotAvailable = false; // Overlap found
-              break;
-            }
-          }
-
-          if (isSlotAvailable) {
-            return { startTime: suggestedStartTime, endTime: suggestedEndTime };
-          }
-        }
-
-        // If no time slot is available during the day, use the last event's end time + 1 hour
-        const lastEvent = allEventsOnDay[allEventsOnDay.length - 1];
-        const startTime = new Date(lastEvent.end.getTime());
-        const endTime = new Date(startTime.getTime());
-        endTime.setTime(startTime.getTime() + antibioticDuration * 60 * 60 * 1000);
-        return { startTime, endTime };
-
-    };
 
 
   const confirmEvent = (event: Event) => {
@@ -467,5 +545,7 @@ export function useEvents() {
     confirmEvent,
     calculateDayTotalDuration,
     getConfirmedEventsCountByDay,
+    getConfirmedEventsFromLocalStorageByDate,
+    getAllEvents,
   };
 }

@@ -22,7 +22,7 @@ const props = defineProps<{
 }>();
 
 const emits = defineEmits(['close', 'save']);
-const { getSuggestedEventTime, confirmEvent, updateEvent, addEvent, events } = useEvents();
+const { getSuggestedEventTime, confirmEvent, updateEvent, addEvent, events, getAllEvents } = useEvents();
 const { contacts, getContactById, antibiotics, getAntibioticByName } = useContacts(); // Get the antibiotics array
 const router = useRouter();
 
@@ -45,9 +45,9 @@ const initializeForm = () => {
     // Preselect the contact
     selectedContact.value = contacts.value.find(contact => contact.id === props.event?.contactId) || null;
     
+    
   } else if (props.date) {
     // New event with suggested times for the current date
-    updateSuggestedTime(props.date, selectedContact.value?.id || null);
     
     //reset the fields values:
     title.value = "";
@@ -64,8 +64,10 @@ const initializeForm = () => {
     endTime.value = '09:00';
     description.value = '';
     selectedContact.value = null;
+    
   }
   //always update the description and the title
+  
   updateDescription();
   updateTitle();
   
@@ -87,8 +89,10 @@ watch(
 
 // Initial setup
 onMounted(() => {
+
   if (props.isOpen) {
     initializeForm();
+
     // Add event listener for Escape key when modal opens
     window.addEventListener('keydown', handleEscapeKey);
   }
@@ -96,6 +100,7 @@ onMounted(() => {
 
 //Cleanup
 onUnmounted(() => {
+  
   // Remove event listener when component unmounts
   window.removeEventListener('keydown', handleEscapeKey);
 })
@@ -161,6 +166,7 @@ const modalTitle = computed(() => {
 
 // Helper function to update the start and end times
 const updateSuggestedTime = (date: Date, contactId: string | null) => {
+
     const { startTime: suggestedStart, endTime: suggestedEnd } = getSuggestedEventTime(date, contactId);
 
     startTime.value = suggestedStart.toTimeString().split(' ')[0].slice(0, 5);
@@ -181,50 +187,47 @@ const isValidDate = (date: Date): boolean => {
 
 // Computed property to get the next recurrence date
 const nextRecurrenceDate = computed<string | null>(() => {
-  if (!selectedContact.value) return null;
+  
+  // Add getAllEvents.value as a dependency to trigger re-evaluation when events change
+  getAllEvents.value;
+
+  console.log('here', getAllEvents.value)
+
+  if (!selectedContact.value || !props.event) return null;
 
   const { antibioticRecurrenceValue, antibioticRecurrenceUnit } = selectedContact.value;
   if (!antibioticRecurrenceValue) return null;
 
-  // Create a Date object from the form values
-  const potentialBaseDate = new Date(`${startDate.value}T${startTime.value}`);
+  // Find the ghost event associated with this confirmed event (if any)
+  const ghostEvent = getAllEvents.value.find(
+    (e) =>
+      !e.confirmed &&
+      e.contactId === props.event.contactId &&
+      e.start.getTime() > props.event.end.getTime() // Ensure the ghost event is after the confirmed event
+  );
 
-  // Check if the created date is valid
+  // Determine the base date for recurrence calculation
   let baseDate: Date;
-  if (isValidDate(potentialBaseDate)) {
-    baseDate = potentialBaseDate;
+  if (ghostEvent) {
+    // If a ghost event exists, use its start time as the base
+    baseDate = new Date(ghostEvent.start.getTime());
   } else {
-    // If it's not valid, get the last day of the month
-    const year = parseInt(startDate.value.split('-')[0]);
-    const month = parseInt(startDate.value.split('-')[1]) -1; // Months are 0-indexed
-    const lastDayOfMonth = new Date(year, month + 1, 0);
-    baseDate = new Date(lastDayOfMonth.toISOString().split('T')[0] + `T${startTime.value}`);
-  }
+      // If no ghost event, use the confirmed event's start time
+      baseDate = new Date(props.event.start.getTime());
+    }
+  
 
   // Calculate the next recurrence date
   const nextStartDate = new Date(baseDate);
   if (antibioticRecurrenceUnit === 'day') {
-      nextStartDate.setDate(nextStartDate.getDate() + antibioticRecurrenceValue);
+    nextStartDate.setDate(nextStartDate.getDate() + antibioticRecurrenceValue);
   } else if (antibioticRecurrenceUnit === 'week') {
-      nextStartDate.setDate(nextStartDate.getDate() + antibioticRecurrenceValue * 7);
+    nextStartDate.setDate(nextStartDate.getDate() + antibioticRecurrenceValue * 7);
   }
 
   return formatRecurrenceDate(nextStartDate);
 });
 
-// Watcher to update the ghost event date when contact changes
-// watch(
-//   () => selectedContact.value,
-//   () => {
-//     // Recompute nextRecurrenceDate when selectedContact changes
-//     nextRecurrenceDate.value;
-//     // Update title and other fields
-//     updateTitle();
-//     updateDescription();
-
-//   },
-//   {deep: true}
-// );
 
 // Watch for date changes
 watch(() => props.date, (newDate) => {
