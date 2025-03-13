@@ -191,8 +191,6 @@ const nextRecurrenceDate = computed<string | null>(() => {
   // Add getAllEvents.value as a dependency to trigger re-evaluation when events change
   getAllEvents.value;
 
-  console.log('here', getAllEvents.value)
-
   if (!selectedContact.value || !props.event) return null;
 
   const { antibioticRecurrenceValue, antibioticRecurrenceUnit } = selectedContact.value;
@@ -300,131 +298,132 @@ const updateDescription = () => {
      else if (!props.event && antibioticInfo.value && selectedContact.value) {
       // if the user is creating a new event.
         description.value = `Antibiotic: ${antibioticInfo.value}`;
+
     } else if (props.event) {
         // If it's an existing event, use the event's description.
-        description.value = props.event.description || '';
+        // description.value = props.event.description || '';
+        description.value = `Antibiotic: ${antibioticInfo.value}`;
+
     } else {
         // Default to empty if none of the above apply.
         description.value = "";
+
     }
 };
 </script>
 
 <template>
-  <div v-if="isOpen" class="fixed top-0 left-0 w-full h-full bg-[rgba(0,0,0,0.7)] flex justify-center items-center z-50">
-    <div class="bg-white p-6 rounded-lg w-[450px] max-w-[90%] shadow-lg border-t-12 border-purple-600 relative">
-        <!-- Confirmed Indicator -->
-        <div v-if="isEventConfirmed" class="absolute top-2 right-2 w-4 h-4 bg-green-500 rounded-full"></div>
-        <div v-else class="absolute top-2 right-2 w-4 h-4 bg-red-500 rounded-full"></div>
-      
-      <!--  -->
+  <div v-if="isOpen" class="fixed top-0 left-0 w-full h-full bg-[rgba(0,0,0,0.7)] flex justify-center items-center z-50 p-4 overflow-auto">
+    <div class="bg-white rounded-lg w-full md:max-w-[450px] shadow-lg border-t-12 border-purple-600 relative flex flex-col h-full md:h-auto">
+        <div class="p-6 pb-1 flex-grow overflow-y-auto">
+          <!-- Confirmed Indicator -->
+          <div v-if="isEventConfirmed" class="absolute top-2 right-2 w-4 h-4 bg-green-500 rounded-full"></div>
+          <div v-else class="absolute top-2 right-2 w-4 h-4 bg-red-500 rounded-full"></div>
+        
+          <h2 class="font-bold text-xl mb-3">{{ modalTitle }}</h2>
 
-      <h2 class="font-bold text-xl mb-3">{{ modalTitle }}</h2>
-
-         <!-- Next Recurrence Date Display -->
-        <div v-if="nextRecurrenceDate" class="text-sm mb-2 text-gray-600">
-            Next Recurrence: <span class="font-bold">{{ nextRecurrenceDate }}</span>
-        </div>
-       <!-- Contact Phone Number (only if not confirmed) -->
-        <div v-if="!isEventConfirmed && getContactPhoneNumber" class="text-sm mb-2 text-gray-600">
-          Contact Phone: <span class="font-bold underline">{{ getContactPhoneNumber }}</span>
-        </div>
-          <!-- Antibiotic Info -->
-         <!-- <div v-if="antibioticInfo" class="text-sm mb-2 text-gray-600">
-            Antibiotic: <span class="font-bold">{{ antibioticInfo }}</span>
-        </div> -->
-      <form @submit.prevent="saveEvent">
-
-        <!-- Contact Selection -->
-        <div class="mb-4">
-          <label for="contact" class="block mb-2 font-medium text-gray-700">Client</label>
-          <select id="contact" v-model="selectedContact" class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent font-bold bg-purple-100 disabled:cursor-not-allowed" :disabled="isConfirmingGhost">
-            <option :value="null">No Contact</option>
-            <option v-for="contact in contacts" :key="contact.id" :value="contact">
-              {{ contact.name }}
-            </option>
-          </select>
-          <div v-if="selectedContact" class="mt-1">
-            <a href="#" @click.prevent="handleEditContact()" class="text-primary text-sm hover:underline">Edit client</a>
+          <!-- Next Recurrence Date Display -->
+          <div v-if="nextRecurrenceDate" class="text-sm mb-2 text-gray-600">
+              Next Recurrence: <span class="font-bold">{{ nextRecurrenceDate }}</span>
           </div>
-        </div>
-
-        <div class="mb-4">
-          <label class="block mb-2 font-medium text-gray-700">Date</label>
-          <div class="flex gap-2">
-            <input
-              v-model="startDate"
-              type="date"
-              required
-              class="flex-1 px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-            />
-
+          <!-- Contact Phone Number (only if not confirmed) -->
+          <div v-if="!isEventConfirmed && getContactPhoneNumber" class="text-sm mb-2 text-gray-600">
+            Contact Phone: <span class="font-bold underline">{{ getContactPhoneNumber }}</span>
           </div>
-        </div>
-
-        <div class="mb-4 flex gap-2 w-full">
-          
-            <div class="flex flex-col items-start flex-grow">
-              <label class="block mb-2 font-medium text-gray-700">Start Time</label>
-              <input
-                v-model="startTime"
-                type="time"
-                required
-                class="flex-1 px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent w-full"
-              />
+          <form @submit.prevent="saveEvent">
+            <!-- Contact Selection -->
+            <div class="mb-4">
+              <label for="contact" class="block mb-2 font-medium text-gray-700">Client</label>
+              <select id="contact" v-model="selectedContact" class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent font-bold bg-purple-100 disabled:cursor-not-allowed" :disabled="isConfirmingGhost">
+                <option :value="null">No Contact</option>
+                <option v-for="contact in contacts" :key="contact.id" :value="contact">
+                  {{ contact.name }}
+                </option>
+              </select>
+              <div v-if="selectedContact" class="mt-1">
+                <a href="#" @click.prevent="handleEditContact()" class="text-primary text-sm hover:underline">Edit client</a>
+              </div>
             </div>
 
-            <div class="flex flex-col items-start flex-grow">
-              <label class="block mb-2 font-medium text-gray-700">End Time</label>
+            <div class="mb-4">
+              <label class="block mb-2 font-medium text-gray-700">Date</label>
+              <div class="flex flex-col sm:flex-row gap-2">
+                <input
+                  v-model="startDate"
+                  type="date"
+                  required
+                  class="flex-1 px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                />
 
+              </div>
+            </div>
+
+            <div class="mb-4 flex flex-col sm:flex-row gap-2 w-full">
+                
+                <div class="flex flex-col items-start flex-grow">
+                  <label class="block mb-2 font-medium text-gray-700">Start Time</label>
+                  <input
+                    v-model="startTime"
+                    type="time"
+                    required
+                    class="flex-1 px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent w-full"
+                  />
+                </div>
+
+                <div class="flex flex-col items-start flex-grow">
+                  <label class="block mb-2 font-medium text-gray-700">End Time</label>
+
+                  <input
+                    v-model="endTime"
+                    type="time"
+                    required
+                    class="flex-1 px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent w-full"
+                  />
+              </div>
+            </div>
+            <div class="mb-4">
+              <label for="title" class="block mb-2 font-medium text-gray-700">Title (Optonial)</label>
               <input
-                v-model="endTime"
-                type="time"
-                required
-                class="flex-1 px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent w-full"
+                id="title"
+                v-model="title"
+                type="text"
+                
+                autofocus
+                class="w-full px-3 py-2 border border-gray-300 bg-gray-100 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
               />
-          </div>
+            </div>
+            <div class="mb-4">
+              <label for="description" class="block mb-2 font-medium text-gray-700">Notes (Optional)</label>
+              <textarea
+                id="description"
+                v-model="description"
+                rows="3"
+                class="w-full px-3 py-2 border border-gray-300 bg-gray-100 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+              ></textarea>
+            </div>
+          </form>
         </div>
-        <div class="mb-4">
-          <label for="title" class="block mb-2 font-medium text-gray-700">Title (Optonial)</label>
-          <input
-            id="title"
-            v-model="title"
-            type="text"
-            
-            autofocus
-            class="w-full px-3 py-2 border border-gray-300 bg-gray-100 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-          />
-        </div>
-        <div class="mb-4">
-          <label for="description" class="block mb-2 font-medium text-gray-700">Notes (Optional)</label>
-          <textarea
-            id="description"
-            v-model="description"
-            rows="3"
-            class="w-full px-3 py-2 border border-gray-300 bg-gray-100 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-          ></textarea>
-        </div>
-
-        <div class="flex justify-end gap-3 mt-6">
-          <button
-            type="button"
-            class="px-4 py-2 bg-gray-100 text-gray-700 border border-gray-300 rounded-md cursor-pointer hover:bg-gray-200"
-            @click="emits('close')"
-          >
-            Cancel
-          </button>
-          <button
-            type="submit"
-            class="px-4 py-2 bg-primary text-white border border-transparent rounded-md cursor-pointer hover:bg-primary-dark"
-          >
-            {{ isConfirmingGhost ? 'Confirm' : 'Save' }}
-          </button>
-        </div>
-      </form>
-    </div>
+          <div class="pb-6 pl-6 pr-6 flex justify-end gap-3 pt-6 sm:pt-0">
+              <button
+                type="button"
+                class="px-4 py-2 bg-gray-100 text-gray-700 border border-gray-300 rounded-md cursor-pointer hover:bg-gray-200"
+                @click="emits('close')"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                v-on:click="saveEvent"
+                class="px-4 py-2 bg-primary text-white border border-transparent rounded-md cursor-pointer hover:bg-primary-dark"
+              >
+                {{ isConfirmingGhost ? 'Confirm' : 'Save' }}
+                
+              </button>
+            </div>
+      </div>
   </div>
 </template>
+
 
 <style scoped>
 /* All CSS code has been replaced by tailwind */

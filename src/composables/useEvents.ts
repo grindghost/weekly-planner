@@ -242,7 +242,6 @@ const generateGhostEvents = (event: Event) => {
 
   // Function to get all confirmed events, and dynamically compute ghost events
   const getAllEvents = computed(() => {
-    console.log("confirmedEvents.value: ", confirmedEvents.value);
     return [...confirmedEvents.value, ...ghostEvents.value].sort((a, b) => a.start.getTime() - b.start.getTime());
   });
 

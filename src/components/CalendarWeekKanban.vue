@@ -153,8 +153,8 @@ const isToday = (date: Date) => {
       <div class="text-xl font-bold">
         {{ currentDate.toLocaleString('default', { month: 'long', year: 'numeric' }) }}
       </div>
-      <div class="flex space-x-2 items-center">
-        <span class="mr-2 text-sm">Collapse cards</span>
+      <div class="flex space-x-2 items-center ml-auto absolute right-8">
+        <span class="mr-2 text-sm hidden sm:block">Collapse cards</span>
         <!-- New: Compact View Toggle -->
         <label class="switch mr-5">
             
@@ -176,11 +176,11 @@ const isToday = (date: Date) => {
       </div>
     </div>
 
-    <div class="flex gap-4">
+    <div class="flex gap-4 flex-col sm:flex-row">
       <div
         v-for="(week, weekIndex) in monthWeeks"
         :key="weekIndex"
-        class="kanban-column w-full border border-gray-300 rounded-lg bg-gray-50 shadow-md flex flex-col"
+        class="kanban-column w-full sm:flex-1 border border-gray-300 rounded-lg bg-gray-50 shadow-md flex flex-col"
       >
         <div class="week-header text-center font-bold p-3 bg-primary text-white rounded-t-lg flex flex-col min-w-[180px]">
           Week #{{ weekIndex + 1 }}
@@ -223,26 +223,6 @@ const isToday = (date: Date) => {
                   @update="handleUpdateEvent"
                   class="event-in-list mb-2 cursor-pointer transition transform hover:-translate-y-1 hover:shadow-md"
                 />              
-
-              <!-- <GhostEventCard
-                v-for="event in getGhostEventsByDate(day.date)"
-                :key="event.id"
-                :event="event"
-                :compact="compactView"
-                @click="openModal(event)"
-                class="event-in-list mb-2 cursor-pointer transition transform hover:-translate-y-1 hover:shadow-md"
-              />
-              <EventCard
-                v-for="event in getConfirmedEventsByDate(day.date)"
-                :key="event.id"
-                :event="event"
-                :compact="compactView"
-                @edit="openModal(event)"
-                @click.stop="openModal(event)"
-                @delete="handleDeleteEvent"
-                @update="handleUpdateEvent"
-                class="event-in-list mb-2 cursor-pointer transition transform hover:-translate-y-1 hover:shadow-md"
-              /> -->
 
               <button
                 class="add-event-btn w-full border-2 border-dashed border-gray-300 rounded-md mt-2 cursor-pointer text-gray-600 hover:bg-gray-200 hover:text-gray-800"
@@ -346,4 +326,18 @@ input:checked + .slider:before {
 .slider.round:before {
   border-radius: 50%;
 }
+
+/* Responsive design for mobile */
+@media (max-width: 640px) {
+  .kanban-column {
+    width: 100% !important; /* Full width on mobile */
+  }
+  .week-kanban .flex.gap-4 {
+    flex-direction: column; /* Stack columns on mobile */
+  }
+  .week-header{
+    min-width: auto !important;
+  }
+}
+
 </style>
