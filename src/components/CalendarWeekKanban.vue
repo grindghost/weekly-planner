@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted, nextTick } from 'vue';
 import { useCalendar } from '../composables/useCalendar';
 import { useEvents } from '../composables/useEvents';
 import EventCard from './EventCard.vue';
@@ -145,103 +145,134 @@ const isToday = (date: Date) => {
     const today = new Date();
     return date.toDateString() === today.toDateString();
 };
+
+// New: Computed property to find the current week index
+const currentWeekIndex = computed(() => {
+  const today = new Date();
+  return monthWeeks.value.findIndex(week => {
+    return week.some(day => isToday(day.date));
+  });
+});
+
+// New: Function to check if it's the current week
+const isCurrentWeek = (weekIndex: number) => {
+  return weekIndex === currentWeekIndex.value;
+};
+
+//New : Smooth scroll to current day
+const scrollToCurrentDay = async () => {
+  await nextTick(); 
+  const todayElement = document.querySelector('.is-today');
+  if (todayElement) {
+    todayElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+};
+
+onMounted(() => {
+  scrollToCurrentDay();
+});
 </script>
 
 <template>
   <div class="week-kanban w-full flex flex-col min-h-screen p-4 bg-gray-100">
-    <div class="flex items-center justify-between mb-4">
-      <div class="text-xl font-bold">
-        {{ currentDate.toLocaleString('default', { month: 'long', year: 'numeric' }) }}
-      </div>
-      <div class="flex space-x-2 items-center ml-auto absolute right-8">
-        <span class="mr-2 text-sm hidden sm:block">Collapse cards</span>
-        <!-- New: Compact View Toggle -->
-        <label class="switch mr-5">
-            
-            <input type="checkbox" v-model="compactView" id="">
-            <span class="slider round"></span>
-        </label>
-        <button
-          @click="goToPrevMonth"
-          class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded inline-flex items-center"
-        >
-          ←
-        </button>
-        <button
-          @click="goToNextMonth"
-          class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded inline-flex items-center"
-        >
-          →
-        </button>
+    <!-- **New: Fixed Header Container** -->
+    <div class="fixed top-16 sm:top-18 left-0 w-full bg-gray-100 z-5 p-4">
+      <div class="flex items-center justify-between h-14">
+        <div class="text-xl font-bold">
+          {{ currentDate.toLocaleString('default', { month: 'long', year: 'numeric' }) }}
+        </div>
+        <div class="flex space-x-2 items-center ml-auto">
+          <span class="mr-2 text-sm hidden sm:block">Collapse cards</span>
+          <!-- New: Compact View Toggle -->
+          <label class="switch mr-5">
+              <input type="checkbox" v-model="compactView" id="">
+              <span class="slider round"></span>
+          </label>
+          <button
+            @click="goToPrevMonth"
+            class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded inline-flex items-center"
+          >
+            ←
+          </button>
+          <button
+            @click="goToNextMonth"
+            class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded inline-flex items-center"
+          >
+            →
+          </button>
+        </div>
       </div>
     </div>
-
-    <div class="flex gap-4 flex-col sm:flex-row">
-      <div
-        v-for="(week, weekIndex) in monthWeeks"
-        :key="weekIndex"
-        class="kanban-column w-full sm:flex-1 border border-gray-300 rounded-lg bg-gray-50 shadow-md flex flex-col"
-      >
-        <div class="week-header text-center font-bold p-3 bg-primary text-white rounded-t-lg flex flex-col min-w-[180px]">
-          Week #{{ weekIndex + 1 }}
-          <div class="text-xs light">
-            {{ formatWeekHeader(week) }}
-          </div>
-        </div>
-
-        <div class="week-days flex-1 p-2 overflow-y-auto">
-          <div
-            v-for="day in getWorkWeekDays(week)"
-            :key="day.date.toISOString()"
-            :class="[
-              'day-container',
-              'mb-4',
-              'border-b',
-              'border-gray-200',
-              'pb-4',
-              'last:border-b-0',
-              'last:pb-0',
-              isToday(day.date) ? 'border-1 border-primary rounded-md p-2 bg-purple-50 last:border-b-1 last:pb-4' : '', // Add border for today
-            ]"
-          >
-            <h3 class="day-header text-gray-500 uppercase text-xs tracking-wider mb-1" :class="isToday(day.date) ? 'text-primary font-extrabold' : 'font-semibold'">
-              {{ formatDayHeader(day.date) }}
-            </h3>
-
-            <div class="day-events p-1">
-
-              <!-- **New: Single loop for all sorted events** -->
-              <component
-                  v-for="event in getSortedEventsByDate(day.date)"
-                  :key="event.id"
-                  :is="event.confirmed ? EventCard : GhostEventCard"
-                  :event="event"
-                  :compact="compactView"
-                  @edit="openModal(event)"
-                  @click="openModal(event)"
-                  @delete="handleDeleteEvent"
-                  @update="handleUpdateEvent"
-                  class="event-in-list mb-2 cursor-pointer transition transform hover:-translate-y-1 hover:shadow-md"
-                />              
-
-              <button
-                class="add-event-btn w-full border-2 border-dashed border-gray-300 rounded-md mt-2 cursor-pointer text-gray-600 hover:bg-gray-200 hover:text-gray-800"
-                @click="openModal(null, day.date)"
-              >
-                +
-              </button>
+    <!-- **New: Margin to compensate for fixed header** -->
+    <div class="">
+      <div class="flex gap-4 flex-col sm:flex-row">
+        <div
+          v-for="(week, weekIndex) in monthWeeks"
+          :key="weekIndex"
+          class="kanban-column w-full sm:flex-1 rounded-lg shadow-md flex flex-col"
+          
+        >
+          <div class="week-header sticky top-38 text-center font-bold p-3 bg-primary text-white rounded-t-lg flex flex-col min-w-[180px] z-4 sm:z-5">
+            Week #{{ weekIndex + 1 }}
+            <div class="text-xs light">
+              {{ formatWeekHeader(week) }}
             </div>
           </div>
-        </div>
-        <div class="sticky bottom-0 flex flex-col">
-          <div class="h-10 bg-gradient-to-b from-transparent to-white"></div>
-          <div class="week-footer text-center font-bold p-3 bg-gray-200 rounded-b-lg mt-auto">
-            <!-- Total Duration:  -->
-            <div>
-              {{ calculateWeekTotalDuration(week[1].date, week[5].date) }}
+
+          <div :class="{ 'current-week': isCurrentWeek(weekIndex) }" class="week-days flex-1 p-2 overflow-y-auto bg-gray-50 pt-[4rem]">
+            <div
+              v-for="day in getWorkWeekDays(week)"
+              :key="day.date.toISOString()"
+              :class="[
+                'day-container',
+                'mb-4',
+                'border-b',
+                'border-gray-200',
+                'pb-4',
+                'last:border-b-0',
+                'last:pb-0',
+                isToday(day.date) ? 'border-1 border-primary rounded-md p-2 bg-purple-50 last:border-b-1 last:pb-4 is-today' : '', // Add border for today
+              ]"
+            >
+              <h3 class="day-header text-gray-500 uppercase text-xs tracking-wider mb-1" :class="isToday(day.date) ? 'text-primary font-extrabold' : 'font-semibold'">
+                {{ formatDayHeader(day.date) }}
+              </h3>
+
+              <div class="day-events p-1">
+
+                <!-- **New: Single loop for all sorted events** -->
+                <component
+                    v-for="event in getSortedEventsByDate(day.date)"
+                    :key="event.id"
+                    :is="event.confirmed ? EventCard : GhostEventCard"
+                    :event="event"
+                    :compact="compactView"
+                    @edit="openModal(event)"
+                    @click="openModal(event)"
+                    @delete="handleDeleteEvent"
+                    @update="handleUpdateEvent"
+                    class="event-in-list mb-2 cursor-pointer transition transform hover:-translate-y-1 hover:shadow-md"
+                  />              
+
+                <button
+                  class="add-event-btn w-full border-2 border-dashed border-gray-300 rounded-md mt-2 cursor-pointer text-gray-600 hover:bg-gray-200 hover:text-gray-800"
+                  @click="openModal(null, day.date)"
+                >
+                  +
+                </button>
+              </div>
             </div>
-            <div class="text-xs font-light">
-              ({{ getConfirmedEventsCountByWeek[weekIndex] }} clients confirmed)
+          </div>
+          <div class="sticky bottom-0 flex flex-col">
+            <div class="fixed h-10 bg-gradient-to-b from-transparent to-white"></div>
+            <div class="week-footer text-center font-bold p-3 bg-gray-200 rounded-b-lg mt-auto">
+              <!-- Total Duration:  -->
+              <div>
+                {{ calculateWeekTotalDuration(week[1].date, week[5].date) }}
+              </div>
+              <div class="text-xs font-light">
+                ({{ getConfirmedEventsCountByWeek[weekIndex] }} clients confirmed)
+              </div>
             </div>
           </div>
         </div>
@@ -340,4 +371,10 @@ input:checked + .slider:before {
   }
 }
 
+/* Highlight for the current week */
+.current-week {
+  border-left: 2px solid var(--primary-color);
+  border-right: 2px solid var(--primary-color);
+  box-shadow: 0 4px 8px rgba(var(--primary-color-rgb), 0.2);
+}
 </style>

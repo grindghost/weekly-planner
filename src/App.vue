@@ -7,7 +7,7 @@ import Logo from './assets/logo.svg';
 import AvatarPlaceholder from './assets/avatar-placeholder.png';
 import { RouterLink } from 'vue-router';
 
-const view = ref<'month' | 'week'>('month');
+const view = ref<'month' | 'week'>('week');
 const route = useRoute();
 
 // State for the hamburger menu
