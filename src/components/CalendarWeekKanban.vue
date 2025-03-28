@@ -175,7 +175,7 @@ onMounted(() => {
 
 <template>
   <div class="week-kanban w-full flex flex-col min-h-screen p-4 bg-gray-100">
-    <!-- **New: Fixed Header Container** -->
+    <!-- **New: Fixed Header Container ...** -->
     <div class="fixed top-16 sm:top-18 left-0 w-full bg-gray-100 z-5 p-4">
       <div class="flex items-center justify-between h-14">
         <div class="text-xl font-bold">
